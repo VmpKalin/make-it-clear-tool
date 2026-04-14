@@ -13,7 +13,8 @@
       "Bash(curl -s \"https://api.github.com/repos/voyage-ai/typescript-sdk/contents/src/api/client/requests\")",
       "Bash(curl -s \"https://api.github.com/repos/voyage-ai/typescript-sdk/git/trees/main?recursive=1\")",
       "Bash(curl -s https://raw.githubusercontent.com/voyage-ai/typescript-sdk/main/README.md)",
-      "Bash(pnpm install:*)"
+      "Bash(pnpm install:*)",
+      "mcp__claude_ai_Context7__query-docs"
     ]
   }
 }

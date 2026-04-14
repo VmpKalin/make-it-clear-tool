@@ -37,6 +37,8 @@ function actionFromCommand(command: string): Action | null {
       return 'shorten';
     case 'run-bullets':
       return 'bullets';
+    case 'run-translate':
+      return 'translate';
     default:
       return null;
   }

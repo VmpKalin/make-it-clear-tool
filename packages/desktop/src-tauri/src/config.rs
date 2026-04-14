@@ -14,6 +14,7 @@ pub enum Action {
     Rewrite,
     Shorten,
     Bullets,
+    Translate,
 }
 
 impl Action {
@@ -23,6 +24,7 @@ impl Action {
             Action::Rewrite => "run-rewrite",
             Action::Shorten => "run-shorten",
             Action::Bullets => "run-bullets",
+            Action::Translate => "run-translate",
         }
     }
 }
@@ -34,6 +36,7 @@ pub struct HotkeyMap {
     pub rewrite: Option<String>,
     pub shorten: Option<String>,
     pub bullets: Option<String>,
+    pub translate: Option<String>,
 }
 
 impl Default for HotkeyMap {
@@ -44,6 +47,7 @@ impl Default for HotkeyMap {
             rewrite: None,
             shorten: None,
             bullets: None,
+            translate: None,
         }
     }
 }

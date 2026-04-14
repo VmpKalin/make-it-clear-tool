@@ -30,6 +30,7 @@ const ACTION_LABEL: Record<Action, string> = {
   rewrite: 'Rewrite',
   shorten: 'Shorten',
   bullets: 'Bullets',
+  translate: 'Translate',
 };
 
 export function App(): JSX.Element {
@@ -239,17 +240,19 @@ export function App(): JSX.Element {
       </main>
 
       <div className="actions">
-        {ACTIONS.map((action) => (
-          <button
-            key={action}
-            type="button"
-            className={`action-btn${activeAction === action ? ' active' : ''}`}
-            disabled={busy}
-            onClick={() => void runAction(action)}
-          >
-            {ACTION_LABEL[action]}
-          </button>
-        ))}
+        <div className="actions-scroll">
+          {ACTIONS.map((action) => (
+            <button
+              key={action}
+              type="button"
+              className={`action-btn${activeAction === action ? ' active' : ''}`}
+              disabled={busy}
+              onClick={() => void runAction(action)}
+            >
+              {ACTION_LABEL[action]}
+            </button>
+          ))}
+        </div>
         {hasResult && !busy && (
           <button
             type="button"

@@ -260,11 +260,22 @@ body {
 .actions {
   padding: 10px 16px 12px;
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
 }
 
+.actions-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: hidden;
+  mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%);
+}
+
 .action-btn {
+  flex-shrink: 0;
   font-family: 'DM Sans', sans-serif;
   font-size: 11px;
   font-weight: 500;
@@ -295,7 +306,7 @@ body {
 }
 
 .copy-btn {
-  margin-left: auto;
+  flex-shrink: 0;
   font-family: 'DM Mono', monospace;
   font-size: 10px;
   letter-spacing: 0.05em;
@@ -424,6 +435,52 @@ body {
 
 .field input::placeholder {
   color: var(--text-muted);
+}
+
+.hotkey-recorder {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.hotkey-recorder:hover:not(.recording) {
+  border-color: var(--border-hover);
+}
+
+.hotkey-recorder.recording {
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  cursor: default;
+}
+
+.hotkey-chip {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border-default);
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
+.hotkey-placeholder {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
 }
 
 .field-checkbox {

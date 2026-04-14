@@ -43,6 +43,7 @@ fn build_menu(app: &AppHandle) -> AppResult<Menu<tauri::Wry>> {
     let rewrite = MenuItemBuilder::with_id("run-rewrite", "Rewrite").build(app)?;
     let shorten = MenuItemBuilder::with_id("run-shorten", "Shorten").build(app)?;
     let bullets = MenuItemBuilder::with_id("run-bullets", "Bullets").build(app)?;
+    let translate = MenuItemBuilder::with_id("run-translate", "Translate").build(app)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let settings = MenuItemBuilder::with_id("open-settings", "Settings...").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
@@ -52,6 +53,7 @@ fn build_menu(app: &AppHandle) -> AppResult<Menu<tauri::Wry>> {
         .item(&rewrite)
         .item(&shorten)
         .item(&bullets)
+        .item(&translate)
         .item(&separator)
         .item(&settings)
         .item(&quit)

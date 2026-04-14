@@ -46,6 +46,9 @@
     },
     "run-bullets": {
       "description": "Convert the current selection to bullet points"
+    },
+    "run-translate": {
+      "description": "Translate the current selection (UK ↔ EN)"
     }
   },
   "web_accessible_resources": [

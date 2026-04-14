@@ -35,6 +35,7 @@ pub fn command_to_action(command: &str) -> Option<Action> {
         "run-rewrite" => Some(Action::Rewrite),
         "run-shorten" => Some(Action::Shorten),
         "run-bullets" => Some(Action::Bullets),
+        "run-translate" => Some(Action::Translate),
         _ => None,
     }
 }

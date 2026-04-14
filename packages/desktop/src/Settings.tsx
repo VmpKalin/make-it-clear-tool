@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type JSX } from 'react';
 import type { Action, AppConfig, Provider } from '@textpilot/shared';
 import { ACTIONS, DEFAULT_CONFIG } from '@textpilot/shared';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { HotkeyRecorder } from './HotkeyRecorder.js';
 import { loadConfig, saveConfig } from './storage.js';
 
 const LOG = '[desktop/Settings]';
@@ -15,6 +16,7 @@ const ACTION_LABEL: Record<Action, string> = {
   rewrite: 'Rewrite',
   shorten: 'Shorten',
   bullets: 'Bullets',
+  translate: 'Translate',
 };
 
 export function Settings({ onClose }: Props): JSX.Element {
@@ -115,11 +117,9 @@ export function Settings({ onClose }: Props): JSX.Element {
 
         <div className="field">
           <span className="field-label">Hotkey Trigger</span>
-          <input
-            type="text"
+          <HotkeyRecorder
             value={config.hotkeys.trigger}
-            onChange={(e) => update('hotkeys', { ...config.hotkeys, trigger: e.target.value })}
-            placeholder="Ctrl+Shift+Space"
+            onChange={(trigger) => update('hotkeys', { ...config.hotkeys, trigger })}
           />
         </div>
 

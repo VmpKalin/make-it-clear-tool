@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TextPilot</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>TextPilot</h1>
+      <a id="open-options" href="#">Settings</a>
+    </header>
+
+    <section>
+      <textarea id="input" rows="6" placeholder="Paste or type text here..."></textarea>
+
+      <div class="actions">
+        <button type="button" data-action="grammar">Grammar</button>
+        <button type="button" data-action="rewrite">Rewrite</button>
+        <button type="button" data-action="shorten">Shorten</button>
+        <button type="button" data-action="bullets">Bullets</button>
+      </div>
+
+      <pre id="output" aria-live="polite"></pre>
+      <p id="status" class="status"></p>
+    </section>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

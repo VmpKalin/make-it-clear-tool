@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Tauri
+packages/desktop/src-tauri/target/
+packages/desktop/src-tauri/WixTools/
+*.dmg
+*.msi
+*.exe
+*.app
+*.deb
+*.rpm
+*.AppImage
+
+# Extension
+packages/extension/dist/
+*.zip
+*.crx
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# API keys — never commit these
+*.key
+secrets.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+.turbo/

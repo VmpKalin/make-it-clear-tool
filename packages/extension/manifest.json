@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "TextPilot",
+  "version": "0.1.0",
+  "description": "AI-powered text assistant — fix grammar, rewrite, shorten, or bullet your selection.",
+  "permissions": ["storage", "clipboardRead", "clipboardWrite", "notifications", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://api.anthropic.com/*",
+    "https://api.openai.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "TextPilot",
+    "default_popup": "popup/popup.html"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "run-default-action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Space",
+        "mac": "Command+Shift+Space"
+      },
+      "description": "Run the default TextPilot action on the current selection"
+    },
+    "run-grammar": {
+      "description": "Fix grammar in the current selection"
+    },
+    "run-rewrite": {
+      "description": "Rewrite the current selection"
+    },
+    "run-shorten": {
+      "description": "Shorten the current selection"
+    },
+    "run-bullets": {
+      "description": "Convert the current selection to bullet points"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["prompts.md"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "textpilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-powered text assistant — browser extension + desktop widget",
+  "scripts": {
+    "typecheck": "pnpm -r --parallel typecheck",
+    "build:all": "pnpm -r build",
+    "dev:extension": "pnpm --filter extension dev",
+    "dev:desktop": "pnpm --filter desktop tauri dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

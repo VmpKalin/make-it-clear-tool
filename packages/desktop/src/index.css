@@ -1,0 +1,497 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Mono:wght@400&display=swap');
+
+:root {
+  --bg-primary: #1c1c1f;
+  --bg-secondary: #141416;
+  --bg-elevated: #242428;
+
+  --accent: #7f77dd;
+  --accent-dim: #534ab7;
+  --accent-muted: rgba(83, 74, 183, 0.25);
+  --accent-border: rgba(143, 135, 221, 0.35);
+  --accent-text: #cecbf6;
+
+  --text-primary: rgba(255, 255, 255, 0.88);
+  --text-secondary: rgba(255, 255, 255, 0.45);
+  --text-muted: rgba(255, 255, 255, 0.22);
+  --text-mono: rgba(255, 255, 255, 0.18);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-hover: rgba(255, 255, 255, 0.18);
+
+  --green-dot: #1d9e75;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+#root {
+  display: flex;
+}
+
+/* ------------- Window shell ------------- */
+
+.window {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  border: 0.5px solid var(--border-subtle);
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+  animation: appear 0.15s ease-out forwards;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ------------- Header ------------- */
+
+.header {
+  background: var(--bg-secondary);
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.app-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--accent-muted);
+  color: var(--accent);
+  border: 0.5px solid var(--accent-border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-chip {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  padding: 0;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.icon-chip:hover {
+  background: var(--accent-muted);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.close-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  padding: 0;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.close-btn:hover {
+  background: rgba(255, 80, 80, 0.15);
+  color: rgba(255, 100, 100, 0.8);
+  border-color: rgba(255, 80, 80, 0.3);
+}
+
+/* ------------- Body ------------- */
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.original-text {
+  padding: 12px 16px;
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--text-muted);
+  line-height: 1.6;
+  border-bottom: 0.5px solid var(--border-subtle);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.original-text:hover {
+  color: var(--text-secondary);
+}
+
+.input-area {
+  flex: 1;
+  display: flex;
+  padding: 12px 16px;
+  min-height: 0;
+}
+
+.input-area textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.65;
+  color: var(--text-primary);
+  padding: 0;
+}
+
+.input-area textarea::placeholder {
+  color: var(--text-secondary);
+  font-style: italic;
+  font-weight: 300;
+}
+
+.result-area {
+  flex: 1;
+  padding: 14px 16px;
+  min-height: 80px;
+  overflow: auto;
+}
+
+.result-text {
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--text-primary);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 1px;
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ------------- Actions ------------- */
+
+.actions {
+  padding: 10px 16px 12px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.action-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 0.5px solid var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.action-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.action-btn.active {
+  background: var(--accent-muted);
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+}
+
+.action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.copy-btn {
+  margin-left: auto;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 20px;
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent-border);
+  color: var(--accent-text);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.copy-btn:hover {
+  background: var(--accent);
+}
+
+.copy-btn:active {
+  transform: scale(0.97);
+}
+
+.copy-btn.copied {
+  background: rgba(29, 158, 117, 0.2);
+  border-color: rgba(29, 158, 117, 0.45);
+  color: var(--green-dot);
+}
+
+.copy-btn.copied:hover {
+  background: rgba(29, 158, 117, 0.28);
+}
+
+/* ------------- Status bar ------------- */
+
+.status-bar {
+  padding: 7px 16px;
+  border-top: 0.5px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green-dot);
+  animation: pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.status-text {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--text-mono);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.provider-badge {
+  margin-left: auto;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--text-mono);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+/* ------------- Settings view ------------- */
+
+.settings-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 16px;
+  overflow: auto;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-mono);
+}
+
+.field input[type='text'],
+.field input[type='password'],
+.field select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--accent-border);
+}
+
+.field input::placeholder {
+  color: var(--text-muted);
+}
+
+.field-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.field-checkbox input {
+  accent-color: var(--accent);
+  width: 13px;
+  height: 13px;
+  margin: 0;
+}
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.save-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent-border);
+  color: var(--accent-text);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.save-btn:hover {
+  background: var(--accent);
+}
+
+.ghost-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: transparent;
+  border: 0.5px solid var(--border-default);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ghost-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.save-status {
+  margin-left: auto;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--text-mono);
+  letter-spacing: 0.04em;
+}

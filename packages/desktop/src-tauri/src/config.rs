@@ -65,6 +65,8 @@ pub struct AppConfig {
     pub hotkeys: HotkeyMap,
     #[serde(default = "default_true")]
     pub tray_enabled: bool,
+    #[serde(default)]
+    pub auto_run_on_paste: bool,
 }
 
 fn default_true() -> bool {
@@ -80,6 +82,7 @@ impl Default for AppConfig {
             show_ui: false,
             hotkeys: HotkeyMap::default(),
             tray_enabled: true,
+            auto_run_on_paste: false,
         }
     }
 }

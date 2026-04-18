@@ -7,7 +7,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { sendNotification } from '@tauri-apps/plugin-notification';
 import { Settings } from './Settings.js';
-import { loadConfig } from './storage.js';
+import { loadConfig, saveConfig } from './storage.js';
 
 const LOG = '[desktop/App]';
 
@@ -44,11 +44,33 @@ export function App(): JSX.Element {
   const [copied, setCopied] = useState(false);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const requestIdRef = useRef<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const hasResult = busy || output.length > 0;
 
   useEffect(() => {
     void loadConfig().then(setConfig);
+  }, []);
+
+  useEffect(() => {
+    const unlisten = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+      if (focused) {
+        textareaRef.current?.focus();
+      }
+    });
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        void getCurrentWindow().hide();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
   }, []);
 
   useEffect(() => {
@@ -79,8 +101,8 @@ export function App(): JSX.Element {
   }, []);
 
   const runAction = useCallback(
-    async (action: Action) => {
-      const source = (hasResult ? original : text).trim();
+    async (action: Action, textOverride?: string) => {
+      const source = (textOverride ?? (hasResult ? original : text)).trim();
       if (!source) {
         setStatus('paste text first');
         return;
@@ -148,11 +170,31 @@ export function App(): JSX.Element {
   const handleClose = useCallback(async () => {
     try {
       const appWindow = getCurrentWindow();
-      await appWindow.close();
+      await appWindow.hide();
     } catch (err) {
-      console.error(`${LOG} Close failed`, err);
+      console.error(`${LOG} Hide failed`, err);
     }
   }, []);
+
+  const handlePaste = useCallback(() => {
+    if (!config?.autoRunOnPaste) return;
+    setTimeout(() => {
+      const current = textareaRef.current?.value ?? '';
+      if (!current.trim()) return;
+      void runAction(config.defaultAction, current);
+    }, 0);
+  }, [config, runAction]);
+
+  const toggleAutoRun = useCallback(async () => {
+    if (!config) return;
+    const updated = { ...config, autoRunOnPaste: !config.autoRunOnPaste };
+    setConfig(updated);
+    try {
+      await saveConfig(updated);
+    } catch (err) {
+      console.error(`${LOG} Auto-run save failed`, err);
+    }
+  }, [config]);
 
   if (view === 'settings') {
     return (
@@ -229,8 +271,10 @@ export function App(): JSX.Element {
         ) : (
           <div className="input-area">
             <textarea
+              ref={textareaRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onPaste={handlePaste}
               placeholder="Paste or type text here..."
               autoFocus
               spellCheck={false}
@@ -268,6 +312,14 @@ export function App(): JSX.Element {
       <footer className="status-bar">
         {busy && <span className="status-dot" aria-hidden="true" />}
         <span className="status-text">{status || 'ready'}</span>
+        <label className="auto-run-toggle" title="Auto-run default action on paste">
+          <input
+            type="checkbox"
+            checked={config?.autoRunOnPaste ?? false}
+            onChange={() => void toggleAutoRun()}
+          />
+          auto
+        </label>
         <span className="provider-badge">{providerLabel}</span>
       </footer>
     </div>

@@ -1,5 +1,5 @@
-use tauri::{AppHandle, Manager, Emitter};
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
+use tauri::{AppHandle, Emitter, Manager};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
 use crate::config::Action;
 use crate::error::{AppError, AppResult};
@@ -8,20 +8,24 @@ pub fn register_default(app: &AppHandle, trigger: &str) -> AppResult<()> {
     let shortcut: Shortcut = trigger
         .parse()
         .map_err(|e| AppError::Config(format!("Invalid hotkey '{trigger}': {e}")))?;
-    let handle = app.clone();
+    println!("[desktop/hotkey] Parsed shortcut for '{trigger}'");
 
     app.global_shortcut()
-        .on_shortcut(shortcut, move |_app, _sc, event| {
-            if event.state() == ShortcutState::Pressed {
-                println!("[desktop/hotkey] Trigger pressed");
-                dispatch_trigger(&handle);
-            }
-        })
-        .map_err(|e| AppError::Config(format!("Failed to register hotkey: {e}")))?;
+        .register(shortcut)
+        .map_err(|e| AppError::Config(format!("Failed to register hotkey '{trigger}': {e}")))?;
+    println!("[desktop/hotkey] Registered hotkey: {trigger}");
+
+    if app.global_shortcut().is_registered(shortcut) {
+        println!("[desktop/hotkey] Verified: hotkey is active");
+    } else {
+        eprintln!("[desktop/hotkey] WARNING: hotkey not active after register call");
+    }
+
     Ok(())
 }
 
-fn dispatch_trigger(app: &AppHandle) {
+pub fn dispatch_trigger(app: &AppHandle) {
+    println!("[desktop/hotkey] Dispatching trigger");
     let _ = app.emit("textpilot://hotkey-trigger", ());
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();

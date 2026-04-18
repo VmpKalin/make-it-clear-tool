@@ -48,6 +48,7 @@ export function HotkeyRecorder({ value, onChange }: Props): JSX.Element {
       e.stopPropagation();
 
       if (e.key === 'Escape') {
+        e.stopImmediatePropagation();
         stopRecording();
         return;
       }

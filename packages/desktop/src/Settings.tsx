@@ -34,9 +34,9 @@ export function Settings({ onClose }: Props): JSX.Element {
   const handleCloseWindow = useCallback(async () => {
     try {
       const appWindow = getCurrentWindow();
-      await appWindow.close();
+      await appWindow.hide();
     } catch (err) {
-      console.error(`${LOG} Close failed`, err);
+      console.error(`${LOG} Hide failed`, err);
     }
   }, []);
 
@@ -130,6 +130,15 @@ export function Settings({ onClose }: Props): JSX.Element {
             onChange={(e) => update('showUI', e.target.checked)}
           />
           Show popup on hotkey (off = silent clipboard mode)
+        </label>
+
+        <label className="field-checkbox">
+          <input
+            type="checkbox"
+            checked={config.autoRunOnPaste}
+            onChange={(e) => update('autoRunOnPaste', e.target.checked)}
+          />
+          Auto-run default action on paste
         </label>
 
         <label className="field-checkbox">

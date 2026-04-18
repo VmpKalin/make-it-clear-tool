@@ -26,6 +26,7 @@ export interface AppConfig {
   showUI: boolean;
   hotkeys: HotkeyMap;
   trayEnabled: boolean;
+  autoRunOnPaste: boolean;
 }
 
 export interface ActionResult {
@@ -64,4 +65,5 @@ export const DEFAULT_CONFIG: AppConfig = {
     trigger: 'Ctrl+Shift+Space',
   },
   trayEnabled: true,
+  autoRunOnPaste: false,
 };

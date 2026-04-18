@@ -377,8 +377,29 @@ body {
   text-overflow: ellipsis;
 }
 
-.provider-badge {
+.auto-run-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin-left: auto;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--text-mono);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.auto-run-toggle input {
+  accent-color: var(--accent);
+  width: 11px;
+  height: 11px;
+  margin: 0;
+}
+
+.provider-badge {
+  margin-left: 8px;
   font-family: 'DM Mono', monospace;
   font-size: 10px;
   color: var(--text-mono);

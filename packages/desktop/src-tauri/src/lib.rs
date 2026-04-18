@@ -7,6 +7,7 @@ mod prompts;
 mod tray;
 
 use tauri::{AppHandle, Manager};
+use tauri_plugin_global_shortcut::ShortcutState;
 
 use crate::config::{Action, AppConfig};
 use crate::error::AppResult;
@@ -54,7 +55,15 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == ShortcutState::Pressed {
+                        hotkey::dispatch_trigger(app);
+                    }
+                })
+                .build(),
+        )
         .invoke_handler(tauri::generate_handler![run_action, read_clipboard_selection])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -65,6 +74,21 @@ pub fn run() {
                 let _ = window.show();
             }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    println!("[desktop/lib] Close intercepted — window hidden");
+                }
+                tauri::WindowEvent::Focused(false) => {
+                    if window.is_visible().unwrap_or(false) {
+                        let _ = window.hide();
+                    }
+                }
+                _ => {}
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

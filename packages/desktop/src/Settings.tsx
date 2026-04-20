@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type JSX } from 'react';
 import type { Action, AppConfig, Provider } from '@textpilot/shared';
 import { ACTIONS, DEFAULT_CONFIG } from '@textpilot/shared';
+import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { HotkeyRecorder } from './HotkeyRecorder.js';
 import { loadConfig, saveConfig } from './storage.js';
@@ -44,6 +45,7 @@ export function Settings({ onClose }: Props): JSX.Element {
     setStatus('saving...');
     try {
       await saveConfig(config);
+      await invoke('update_hotkey', { trigger: config.hotkeys.trigger });
       setStatus('saved');
       setTimeout(() => setStatus(''), 1500);
     } catch (err) {

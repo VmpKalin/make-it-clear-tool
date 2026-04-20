@@ -4,22 +4,17 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use crate::config::Action;
 use crate::error::{AppError, AppResult};
 
-pub fn register_default(app: &AppHandle, trigger: &str) -> AppResult<()> {
+pub fn register_trigger(app: &AppHandle, trigger: &str) -> AppResult<()> {
     let shortcut: Shortcut = trigger
         .parse()
         .map_err(|e| AppError::Config(format!("Invalid hotkey '{trigger}': {e}")))?;
-    println!("[desktop/hotkey] Parsed shortcut for '{trigger}'");
 
-    app.global_shortcut()
-        .register(shortcut)
+    let gs = app.global_shortcut();
+    let _ = gs.unregister_all();
+
+    gs.register(shortcut)
         .map_err(|e| AppError::Config(format!("Failed to register hotkey '{trigger}': {e}")))?;
     println!("[desktop/hotkey] Registered hotkey: {trigger}");
-
-    if app.global_shortcut().is_registered(shortcut) {
-        println!("[desktop/hotkey] Verified: hotkey is active");
-    } else {
-        eprintln!("[desktop/hotkey] WARNING: hotkey not active after register call");
-    }
 
     Ok(())
 }

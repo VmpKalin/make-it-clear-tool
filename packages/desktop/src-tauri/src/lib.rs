@@ -9,6 +9,7 @@ mod tray;
 use tauri::menu::{Menu, MenuItemBuilder, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::ShortcutState;
+use tauri_plugin_store::StoreExt;
 
 use crate::config::{Action, AppConfig};
 use crate::error::AppResult;
@@ -41,11 +42,32 @@ fn read_clipboard_selection() -> Result<String, String> {
     clipboard::read_selection().map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn update_hotkey(app: AppHandle, trigger: String) -> Result<(), String> {
+    hotkey::register_trigger(&app, &trigger).map_err(|e| e.to_string())
+}
+
+fn load_saved_trigger(app: &AppHandle) -> String {
+    let fallback = config::HotkeyMap::default().trigger;
+    let Ok(store) = app.store("textpilot.config.json") else {
+        return fallback;
+    };
+    let Some(value) = store.get("config") else {
+        return fallback;
+    };
+    value
+        .get("hotkeys")
+        .and_then(|h| h.get("trigger"))
+        .and_then(|t| t.as_str())
+        .map(String::from)
+        .unwrap_or(fallback)
+}
+
 fn bootstrap(app: &AppHandle) -> AppResult<()> {
     tray::build(app)?;
-    let default_trigger = config::HotkeyMap::default().trigger;
-    if let Err(err) = hotkey::register_default(app, &default_trigger) {
-        eprintln!("[desktop/lib] Failed to register default hotkey: {err}");
+    let trigger = load_saved_trigger(app);
+    if let Err(err) = hotkey::register_trigger(app, &trigger) {
+        eprintln!("[desktop/lib] Failed to register hotkey '{trigger}': {err}");
     }
     Ok(())
 }
@@ -53,6 +75,12 @@ fn bootstrap(app: &AppHandle) -> AppResult<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -65,7 +93,7 @@ pub fn run() {
                 })
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![run_action, read_clipboard_selection])
+        .invoke_handler(tauri::generate_handler![run_action, read_clipboard_selection, update_hotkey])
         .menu(|app| {
             // TextPilot submenu: Settings, Quit
             let settings_item = MenuItemBuilder::new("Settings")
@@ -118,18 +146,10 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            match event {
-                tauri::WindowEvent::CloseRequested { api, .. } => {
-                    api.prevent_close();
-                    let _ = window.hide();
-                    println!("[desktop/lib] Close intercepted — window hidden");
-                }
-                tauri::WindowEvent::Focused(false) => {
-                    if window.is_visible().unwrap_or(false) {
-                        let _ = window.hide();
-                    }
-                }
-                _ => {}
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+                println!("[desktop/lib] Close intercepted — window hidden");
             }
         })
         .run(tauri::generate_context!())

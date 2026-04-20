@@ -75,30 +75,56 @@ export function App(): JSX.Element {
     });
   }, [resizeTo]);
 
+  const resetState = useCallback(() => {
+    setText('');
+    setOutput('');
+    setActiveAction(null);
+    setStatus('');
+    setCopied(false);
+    requestIdRef.current = null;
+    void resizeTo(COMPACT_HEIGHT);
+  }, [resizeTo]);
+
+  const hideAndReset = useCallback(async () => {
+    try {
+      await getCurrentWindow().hide();
+    } catch (err) {
+      console.warn(`${LOG} Hide failed`, err);
+    }
+    resetState();
+  }, [resetState]);
+
   useEffect(() => {
     void loadConfig().then(setConfig);
   }, []);
 
   useEffect(() => {
+    let hideTimeout: number | undefined;
     const unlisten = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
       if (focused) {
+        window.clearTimeout(hideTimeout);
         textareaRef.current?.focus();
+      } else {
+        hideTimeout = window.setTimeout(() => {
+          void hideAndReset();
+        }, 200);
       }
     });
     return () => {
+      window.clearTimeout(hideTimeout);
       void unlisten.then((fn) => fn());
     };
-  }, []);
+  }, [hideAndReset]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        void getCurrentWindow().hide();
+        void hideAndReset();
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, []);
+  }, [hideAndReset]);
 
   useEffect(() => {
     const unlistenChunk = listen<StreamChunk>('textpilot://stream-chunk', (event) => {
@@ -206,22 +232,9 @@ export function App(): JSX.Element {
     }
   }, [output]);
 
-  const handleReset = useCallback(() => {
-    setText('');
-    setOutput('');
-    setActiveAction(null);
-    setStatus('');
-    setCopied(false);
-    void resizeTo(COMPACT_HEIGHT);
-  }, [resizeTo]);
+  const handleReset = resetState;
 
-  const handleClose = useCallback(async () => {
-    try {
-      await getCurrentWindow().hide();
-    } catch (err) {
-      console.error(`${LOG} Hide failed`, err);
-    }
-  }, []);
+  const handleClose = hideAndReset;
 
   const handlePaste = useCallback(() => {
     if (!config?.autoRunOnPaste) return;

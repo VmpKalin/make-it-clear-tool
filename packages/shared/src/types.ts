@@ -10,6 +10,14 @@ export const ACTIONS: readonly Action[] = [
   'translate',
 ] as const;
 
+export const ACTION_LABELS: Record<Action, string> = {
+  grammar: 'Fix grammar',
+  rewrite: 'Rewrite',
+  shorten: 'Shorten',
+  bullets: 'Bullets',
+  translate: 'Translate',
+};
+
 export interface HotkeyMap {
   trigger: string;
   grammar?: string;

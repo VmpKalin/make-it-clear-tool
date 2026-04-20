@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type JSX } from 'react';
 import type { Action, AppConfig, Provider } from '@textpilot/shared';
-import { ACTIONS, DEFAULT_CONFIG } from '@textpilot/shared';
+import { ACTIONS, ACTION_LABELS, DEFAULT_CONFIG } from '@textpilot/shared';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { HotkeyRecorder } from './HotkeyRecorder.js';
@@ -11,14 +11,6 @@ const LOG = '[desktop/Settings]';
 interface Props {
   onClose: () => void;
 }
-
-const ACTION_LABEL: Record<Action, string> = {
-  grammar: 'Fix grammar',
-  rewrite: 'Rewrite',
-  shorten: 'Shorten',
-  bullets: 'Bullets',
-  translate: 'Translate',
-};
 
 export function Settings({ onClose }: Props): JSX.Element {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
@@ -111,7 +103,7 @@ export function Settings({ onClose }: Props): JSX.Element {
           >
             {ACTIONS.map((action) => (
               <option key={action} value={action}>
-                {ACTION_LABEL[action]}
+                {ACTION_LABELS[action]}
               </option>
             ))}
           </select>

@@ -362,4 +362,6 @@ cargo check
 - [x] `packages/desktop/src/HotkeyRecorder.tsx` — keyboard shortcut recorder component
 - [x] `packages/desktop/src/App.tsx` — dual-panel view transitions with switchView state machine, labeled result divider
 - [x] `packages/desktop/src/index.css` — slide-in/out view transitions (250ms cubic-bezier), result-divider row with action label, result area tinted background
+- [x] `packages/shared/src/{types,index}.ts` — added shared `ACTION_LABELS` export for single source of action names
+- [x] `packages/desktop/src/{App,Settings}.tsx` — switched to shared action labels, removed duplicated local maps
 - [ ] `cargo check` — blocked: Rust toolchain not installed on this machine

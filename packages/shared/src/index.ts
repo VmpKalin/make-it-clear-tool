@@ -6,7 +6,7 @@ export type {
   ActionResult,
   RunActionParams,
 } from './types.js';
-export { ACTIONS, DEFAULT_CONFIG, ProviderError } from './types.js';
+export { ACTIONS, ACTION_LABELS, DEFAULT_CONFIG, ProviderError } from './types.js';
 
 export type { SystemPrompts } from './prompts.js';
 export {

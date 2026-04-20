@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import type { Action, AppConfig } from '@textpilot/shared';
-import { ACTIONS } from '@textpilot/shared';
+import { ACTIONS, ACTION_LABELS } from '@textpilot/shared';
 import { invoke } from '@tauri-apps/api/core';
 import { LogicalSize } from '@tauri-apps/api/dpi';
 import { listen } from '@tauri-apps/api/event';
@@ -25,15 +25,6 @@ interface StreamError {
   request_id: string;
   message: string;
 }
-
-const ACTION_LABEL: Record<Action, string> = {
-  grammar: 'Grammar',
-  rewrite: 'Rewrite',
-  shorten: 'Shorten',
-  bullets: 'Bullets',
-  translate: 'Translate',
-};
-
 
 type AnimState = 'hidden' | 'appearing' | 'visible' | 'disappearing';
 
@@ -63,7 +54,25 @@ export function App(): JSX.Element {
 
   const hasResult = busy || output.length > 0;
 
-  const resizeToFit = useCallback(() => {}, []);
+  const MAX_HEIGHT = 500;
+
+  const resizeToFit = useCallback(() => {
+    requestAnimationFrame(async () => {
+      try {
+        const root = document.documentElement;
+        const needed = root.scrollHeight;
+        const scale = await getCurrentWindow().scaleFactor();
+        const phys = await getCurrentWindow().outerSize();
+        const currentLogical = Math.round(phys.height / scale);
+        if (needed > currentLogical && currentLogical < MAX_HEIGHT) {
+          const newH = Math.min(needed, MAX_HEIGHT);
+          await getCurrentWindow().setSize(new LogicalSize(Math.round(phys.width / scale), newH));
+        }
+      } catch (err) {
+        console.warn(`${LOG} Resize failed`, err);
+      }
+    });
+  }, []);
 
   const resetState = useCallback(() => {
     setText('');
@@ -157,19 +166,10 @@ export function App(): JSX.Element {
   }, [hideAndReset]);
 
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        void hideAndReset();
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [hideAndReset]);
-
-  useEffect(() => {
     const unlistenChunk = listen<StreamChunk>('textpilot://stream-chunk', (event) => {
       if (event.payload.request_id !== requestIdRef.current) return;
       setOutput((prev) => prev + event.payload.chunk);
+      resizeToFit();
     });
 
     const unlistenDone = listen<StreamDone>('textpilot://stream-done', (event) => {
@@ -231,6 +231,7 @@ export function App(): JSX.Element {
       setCopied(false);
       setActiveAction(action);
       setStatus(`streaming · ${action}`);
+      resizeToFit();
 
       try {
         const requestId = crypto.randomUUID();
@@ -256,7 +257,7 @@ export function App(): JSX.Element {
         requestIdRef.current = null;
       }
     },
-    [text, config, switchView],
+    [text, config, switchView, resizeToFit],
   );
 
   const handleCopy = useCallback(async () => {
@@ -271,9 +272,37 @@ export function App(): JSX.Element {
     }
   }, [output]);
 
+  const handleEdit = useCallback(() => {
+    setOutput('');
+    setActiveAction(null);
+    setStatus('');
+    setCopied(false);
+    requestIdRef.current = null;
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  }, []);
+
   const handleReset = resetState;
 
   const handleClose = hideAndReset;
+
+  useEffect(() => {
+    const handleKeydown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        void hideAndReset();
+        return;
+      }
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key === 'e') {
+        e.preventDefault();
+        handleEdit();
+      } else if (mod && e.key === 'n') {
+        e.preventDefault();
+        handleReset();
+      }
+    };
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [hideAndReset, handleEdit, handleReset]);
 
   const handlePaste = useCallback(() => {
     if (!config?.autoRunOnPaste) return;
@@ -312,15 +341,26 @@ export function App(): JSX.Element {
               <span className="app-badge">TextPilot</span>
               <div className="header-right">
                 {hasResult && !busy && (
-                  <button
-                    type="button"
-                    className="icon-chip"
-                    onClick={handleReset}
-                    title="New"
-                    aria-label="New"
-                  >
-                    +
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="icon-chip"
+                      onClick={handleEdit}
+                      title="Edit (Ctrl+E)"
+                      aria-label="Edit"
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-chip"
+                      onClick={handleReset}
+                      title="New (Ctrl+N)"
+                      aria-label="New"
+                    >
+                      +
+                    </button>
+                  </>
                 )}
                 <button
                   type="button"
@@ -344,15 +384,17 @@ export function App(): JSX.Element {
             </header>
 
             <main className={`body${hasResult ? ' has-result' : ''}`}>
-              <textarea
-                ref={textareaRef}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onPaste={handlePaste}
-                placeholder="Paste or type text here..."
-                autoFocus
-                spellCheck={false}
-              />
+              {!hasResult && (
+                <textarea
+                  ref={textareaRef}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onPaste={handlePaste}
+                  placeholder="Paste or type text here..."
+                  autoFocus
+                  spellCheck={false}
+                />
+              )}
               {hasResult && (
                 <>
                   <div className="result-divider">
@@ -380,7 +422,7 @@ export function App(): JSX.Element {
                     disabled={busy}
                     onClick={() => void runAction(action)}
                   >
-                    {ACTION_LABEL[action]}
+                    {ACTION_LABELS[action]}
                   </button>
                 ))}
               </div>

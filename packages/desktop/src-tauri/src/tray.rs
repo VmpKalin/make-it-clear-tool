@@ -32,8 +32,7 @@ pub fn build(app: &AppHandle) -> AppResult<()> {
             } = event
             {
                 if let Some(window) = tray.app_handle().get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
+                    crate::position::show_near_cursor(&window);
                 }
             }
         })
@@ -59,8 +58,7 @@ fn handle_menu_event(app: &AppHandle, id: &str) {
     match id {
         "open-settings" => {
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
+                crate::position::show_near_cursor(&window);
                 let _ = window.emit("textpilot://open-settings", ());
             }
         }

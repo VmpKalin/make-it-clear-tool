@@ -23,8 +23,7 @@ pub fn dispatch_trigger(app: &AppHandle) {
     println!("[desktop/hotkey] Dispatching trigger");
     let _ = app.emit("textpilot://hotkey-trigger", ());
     if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.set_focus();
+        crate::position::show_near_cursor(&window);
     }
 }
 

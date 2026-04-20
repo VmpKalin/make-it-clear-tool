@@ -3,11 +3,11 @@ mod clipboard;
 mod config;
 mod error;
 mod hotkey;
+mod position;
 mod prompts;
 mod tray;
 
-use tauri::menu::{Menu, MenuItemBuilder, SubmenuBuilder};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::ShortcutState;
 use tauri_plugin_store::StoreExt;
 
@@ -47,6 +47,14 @@ fn update_hotkey(app: AppHandle, trigger: String) -> Result<(), String> {
     hotkey::register_trigger(&app, &trigger).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn frontend_ready(app: AppHandle) {
+    println!("[desktop/lib] Frontend ready");
+    if let Some(window) = app.get_webview_window("main") {
+        position::show_near_cursor(&window);
+    }
+}
+
 fn load_saved_trigger(app: &AppHandle) -> String {
     let fallback = config::HotkeyMap::default().trigger;
     let Ok(store) = app.store("textpilot.config.json") else {
@@ -77,8 +85,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
+                position::show_near_cursor(&window);
             }
         }))
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -93,55 +100,11 @@ pub fn run() {
                 })
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![run_action, read_clipboard_selection, update_hotkey])
-        .menu(|app| {
-            // TextPilot submenu: Settings, Quit
-            let settings_item = MenuItemBuilder::new("Settings")
-                .id("settings")
-                .build(app)?;
-            let quit_item = MenuItemBuilder::new("Quit TextPilot")
-                .id("quit")
-                .accelerator("CmdOrCtrl+Q")
-                .build(app)?;
-            let app_submenu = SubmenuBuilder::new(app, "TextPilot")
-                .items(&[&settings_item, &quit_item])
-                .build()?;
-
-            // Edit submenu: standard clipboard & selection shortcuts for macOS
-            let edit_submenu = SubmenuBuilder::new(app, "Edit")
-                .undo()
-                .redo()
-                .separator()
-                .cut()
-                .copy()
-                .paste()
-                .select_all()
-                .build()?;
-
-            Menu::with_items(app, &[&app_submenu, &edit_submenu])
-        })
+        .invoke_handler(tauri::generate_handler![run_action, read_clipboard_selection, update_hotkey, frontend_ready])
         .setup(|app| {
             let handle = app.handle().clone();
             if let Err(err) = bootstrap(&handle) {
                 eprintln!("[desktop/lib] Bootstrap error: {err}");
-            }
-
-            app.on_menu_event(|app, event| {
-                match event.id().as_ref() {
-                    "settings" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            let _ = window.emit("textpilot://open-settings", ());
-                        }
-                    }
-                    "quit" => app.exit(0),
-                    _ => {}
-                }
-            });
-
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
             }
             Ok(())
         })

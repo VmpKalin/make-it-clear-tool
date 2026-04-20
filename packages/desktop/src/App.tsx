@@ -8,7 +8,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { sendNotification } from '@tauri-apps/plugin-notification';
 import { Settings } from './Settings.js';
-import { loadConfig, saveConfig } from './storage.js';
+import { loadConfig, loadWindowSize, saveConfig, saveWindowSize } from './storage.js';
 
 const LOG = '[desktop/App]';
 
@@ -34,10 +34,14 @@ const ACTION_LABEL: Record<Action, string> = {
   translate: 'Translate',
 };
 
-const DEFAULT_WIDTH = 420;
-const COMPACT_HEIGHT = 300;
-const MIN_RESULT_HEIGHT = 380;
-const MAX_HEIGHT = 640;
+
+type AnimState = 'hidden' | 'appearing' | 'visible' | 'disappearing';
+
+function cornerOrigin(relX: number, relY: number, w: number, h: number): string {
+  const left = relX < w / 2;
+  const top = relY < h / 2;
+  return `${left ? 'left' : 'right'} ${top ? 'top' : 'bottom'}`;
+}
 
 export function App(): JSX.Element {
   const [view, setView] = useState<'main' | 'settings'>('main');
@@ -49,31 +53,17 @@ export function App(): JSX.Element {
   const [activeAction, setActiveAction] = useState<Action | null>(null);
   const [copied, setCopied] = useState(false);
   const [config, setConfig] = useState<AppConfig | null>(null);
+  const [anim, setAnim] = useState<AnimState>('visible');
+  const [origin, setOrigin] = useState('center center');
   const requestIdRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const resultRef = useRef<HTMLParagraphElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hidingRef = useRef(false);
 
   const hasResult = busy || output.length > 0;
 
-  const resizeTo = useCallback(async (height: number) => {
-    try {
-      await getCurrentWindow().setSize(new LogicalSize(DEFAULT_WIDTH, height));
-    } catch (err) {
-      console.warn(`${LOG} Resize failed`, err);
-    }
-  }, []);
-
-  const resizeToFit = useCallback(() => {
-    requestAnimationFrame(() => {
-      const resultEl = resultRef.current;
-      if (!resultEl) return;
-      // header(~46) + textarea(140) + divider(28) + resultText + resultPadding(32) + actions(42) + status(30)
-      const chrome = 46 + 140 + 28 + 32 + 42 + 30;
-      const resultHeight = resultEl.scrollHeight;
-      const needed = Math.max(MIN_RESULT_HEIGHT, Math.min(chrome + resultHeight, MAX_HEIGHT));
-      void resizeTo(needed);
-    });
-  }, [resizeTo]);
+  const resizeToFit = useCallback(() => {}, []);
 
   const resetState = useCallback(() => {
     setText('');
@@ -82,20 +72,70 @@ export function App(): JSX.Element {
     setStatus('');
     setCopied(false);
     requestIdRef.current = null;
-    void resizeTo(COMPACT_HEIGHT);
-  }, [resizeTo]);
+  }, []);
 
-  const hideAndReset = useCallback(async () => {
-    try {
-      await getCurrentWindow().hide();
-    } catch (err) {
-      console.warn(`${LOG} Hide failed`, err);
-    }
-    resetState();
+  const hideAndReset = useCallback(() => {
+    if (hidingRef.current) return;
+    hidingRef.current = true;
+    setAnim('disappearing');
+    setTimeout(() => {
+      void getCurrentWindow().hide().catch((err: unknown) => {
+        console.warn(`${LOG} Hide failed`, err);
+      });
+      resetState();
+      setAnim('hidden');
+    }, 150);
   }, [resetState]);
 
   useEffect(() => {
     void loadConfig().then(setConfig);
+    void loadWindowSize().then(async (size) => {
+      if (size) {
+        await getCurrentWindow().setSize(new LogicalSize(size.width, size.height));
+      }
+      await invoke('frontend_ready');
+    });
+  }, []);
+
+  useEffect(() => {
+    let saveTimeout: number | undefined;
+    let ready = false;
+    const readyTimer = window.setTimeout(() => { ready = true; }, 1500);
+    const unlisten = getCurrentWindow().onResized(() => {
+      if (!ready) return;
+      window.clearTimeout(saveTimeout);
+      saveTimeout = window.setTimeout(async () => {
+        try {
+          const scale = await getCurrentWindow().scaleFactor();
+          const phys = await getCurrentWindow().outerSize();
+          void saveWindowSize(
+            Math.round(phys.width / scale),
+            Math.round(phys.height / scale),
+          );
+        } catch (err) {
+          console.warn(`${LOG} Size save failed`, err);
+        }
+      }, 500);
+    });
+    return () => {
+      window.clearTimeout(readyTimer);
+      window.clearTimeout(saveTimeout);
+      void unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  useEffect(() => {
+    const unlisten = listen<[number, number]>('textpilot://window-will-appear', (event) => {
+      hidingRef.current = false;
+      const [relX, relY] = event.payload;
+      const el = containerRef.current;
+      const w = el?.offsetWidth ?? 400;
+      const h = el?.offsetHeight ?? 200;
+      setOrigin(cornerOrigin(relX, relY, w, h));
+      setAnim('appearing');
+      setTimeout(() => setAnim('visible'), 200);
+    });
+    return () => { void unlisten.then((fn) => fn()); };
   }, []);
 
   useEffect(() => {
@@ -191,7 +231,6 @@ export function App(): JSX.Element {
       setCopied(false);
       setActiveAction(action);
       setStatus(`streaming · ${action}`);
-      void resizeTo(MIN_RESULT_HEIGHT);
 
       try {
         const requestId = crypto.randomUUID();
@@ -217,7 +256,7 @@ export function App(): JSX.Element {
         requestIdRef.current = null;
       }
     },
-    [text, config, switchView, resizeTo],
+    [text, config, switchView],
   );
 
   const handleCopy = useCallback(async () => {
@@ -259,7 +298,11 @@ export function App(): JSX.Element {
   const providerLabel = config?.provider ?? 'not configured';
 
   return (
-    <div className="view-container">
+    <div
+      ref={containerRef}
+      className={`view-container${anim === 'appearing' ? ' appear' : ''}${anim === 'disappearing' ? ' disappear' : ''}`}
+      style={{ transformOrigin: origin }}
+    >
       {(view === 'main' || prevView === 'main') && (
         <div
           className={`view-panel${prevView !== null ? (view === 'main' ? ' view-enter' : ' view-exit') : ''}`}

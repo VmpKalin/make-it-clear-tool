@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import type { Action, AppConfig } from '@textpilot/shared';
 import { ACTIONS } from '@textpilot/shared';
 import { invoke } from '@tauri-apps/api/core';
+import { LogicalSize } from '@tauri-apps/api/dpi';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
@@ -25,9 +26,6 @@ interface StreamError {
   message: string;
 }
 
-const MAIN_HEIGHT = 420;
-const SETTINGS_HEIGHT = 520;
-
 const ACTION_LABEL: Record<Action, string> = {
   grammar: 'Grammar',
   rewrite: 'Rewrite',
@@ -35,6 +33,11 @@ const ACTION_LABEL: Record<Action, string> = {
   bullets: 'Bullets',
   translate: 'Translate',
 };
+
+const DEFAULT_WIDTH = 420;
+const COMPACT_HEIGHT = 300;
+const MIN_RESULT_HEIGHT = 380;
+const MAX_HEIGHT = 640;
 
 export function App(): JSX.Element {
   const [view, setView] = useState<'main' | 'settings'>('main');
@@ -48,8 +51,29 @@ export function App(): JSX.Element {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const requestIdRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const resultRef = useRef<HTMLParagraphElement>(null);
 
   const hasResult = busy || output.length > 0;
+
+  const resizeTo = useCallback(async (height: number) => {
+    try {
+      await getCurrentWindow().setSize(new LogicalSize(DEFAULT_WIDTH, height));
+    } catch (err) {
+      console.warn(`${LOG} Resize failed`, err);
+    }
+  }, []);
+
+  const resizeToFit = useCallback(() => {
+    requestAnimationFrame(() => {
+      const resultEl = resultRef.current;
+      if (!resultEl) return;
+      // header(~46) + textarea(140) + divider(28) + resultText + resultPadding(32) + actions(42) + status(30)
+      const chrome = 46 + 140 + 28 + 32 + 42 + 30;
+      const resultHeight = resultEl.scrollHeight;
+      const needed = Math.max(MIN_RESULT_HEIGHT, Math.min(chrome + resultHeight, MAX_HEIGHT));
+      void resizeTo(needed);
+    });
+  }, [resizeTo]);
 
   useEffect(() => {
     void loadConfig().then(setConfig);
@@ -87,6 +111,7 @@ export function App(): JSX.Element {
       setBusy(false);
       setStatus('done');
       requestIdRef.current = null;
+      resizeToFit();
     });
 
     const unlistenError = listen<StreamError>('textpilot://stream-error', (event) => {
@@ -101,13 +126,11 @@ export function App(): JSX.Element {
       void unlistenDone.then((fn) => fn());
       void unlistenError.then((fn) => fn());
     };
-  }, []);
+  }, [resizeToFit]);
 
   const switchView = useCallback(
     (to: 'main' | 'settings') => {
       if (prevView !== null) return;
-      const height = to === 'settings' ? SETTINGS_HEIGHT : MAIN_HEIGHT;
-      void invoke('resize_window', { height, durationMs: 280 });
       setPrevView(view);
       setView(to);
       setTimeout(() => setPrevView(null), 280);
@@ -116,10 +139,8 @@ export function App(): JSX.Element {
   );
 
   useEffect(() => {
-    const unlisten = listen<string>('navigate', (event) => {
-      if (event.payload === 'settings') {
-        switchView('settings');
-      }
+    const unlisten = listen('textpilot://open-settings', () => {
+      switchView('settings');
     });
     return () => {
       void unlisten.then((fn) => fn());
@@ -144,6 +165,7 @@ export function App(): JSX.Element {
       setCopied(false);
       setActiveAction(action);
       setStatus(`streaming · ${action}`);
+      void resizeTo(MIN_RESULT_HEIGHT);
 
       try {
         const requestId = crypto.randomUUID();
@@ -169,7 +191,7 @@ export function App(): JSX.Element {
         requestIdRef.current = null;
       }
     },
-    [text, config, switchView],
+    [text, config, switchView, resizeTo],
   );
 
   const handleCopy = useCallback(async () => {
@@ -190,7 +212,8 @@ export function App(): JSX.Element {
     setActiveAction(null);
     setStatus('');
     setCopied(false);
-  }, []);
+    void resizeTo(COMPACT_HEIGHT);
+  }, [resizeTo]);
 
   const handleClose = useCallback(async () => {
     try {
@@ -282,7 +305,7 @@ export function App(): JSX.Element {
                     </span>
                   </div>
                   <div className="result-area" aria-live="polite">
-                    <p className="result-text">
+                    <p ref={resultRef} className="result-text">
                       {output}
                       {busy && <span className="cursor" aria-hidden="true" />}
                     </p>

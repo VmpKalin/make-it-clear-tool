@@ -41,50 +41,6 @@ fn read_clipboard_selection() -> Result<String, String> {
     clipboard::read_selection().map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-async fn resize_window(window: tauri::Window, height: f64, duration_ms: u64) -> Result<(), String> {
-    let scale = window.scale_factor().map_err(|e| e.to_string())?;
-    let outer = window.outer_size().map_err(|e| e.to_string())?;
-    let logical_width = outer.width as f64 / scale;
-    let start_height = outer.height as f64 / scale;
-
-    if duration_ms == 0 || (start_height - height).abs() < 1.0 {
-        return window
-            .set_size(tauri::Size::Logical(tauri::LogicalSize {
-                width: logical_width,
-                height,
-            }))
-            .map_err(|e| e.to_string());
-    }
-
-    let start = std::time::Instant::now();
-    let duration = std::time::Duration::from_millis(duration_ms);
-    let frame = std::time::Duration::from_millis(8);
-
-    loop {
-        let elapsed = start.elapsed();
-        if elapsed >= duration {
-            break;
-        }
-        let t = elapsed.as_secs_f64() / duration.as_secs_f64();
-        // cubic-bezier(0.4, 0, 0.2, 1) approximation — ease-out cubic
-        let eased = 1.0 - (1.0 - t).powi(3);
-        let h = start_height + (height - start_height) * eased;
-        let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
-            width: logical_width,
-            height: h,
-        }));
-        tokio::time::sleep(frame).await;
-    }
-
-    window
-        .set_size(tauri::Size::Logical(tauri::LogicalSize {
-            width: logical_width,
-            height,
-        }))
-        .map_err(|e| e.to_string())
-}
-
 fn bootstrap(app: &AppHandle) -> AppResult<()> {
     tray::build(app)?;
     let default_trigger = config::HotkeyMap::default().trigger;
@@ -109,14 +65,9 @@ pub fn run() {
                 })
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![run_action, read_clipboard_selection, resize_window])
-        .setup(|app| {
-            let handle = app.handle().clone();
-            if let Err(err) = bootstrap(&handle) {
-                eprintln!("[desktop/lib] Bootstrap error: {err}");
-            }
-
-            // Build macOS menu bar: TextPilot > Settings, Quit
+        .invoke_handler(tauri::generate_handler![run_action, read_clipboard_selection])
+        .menu(|app| {
+            // TextPilot submenu: Settings, Quit
             let settings_item = MenuItemBuilder::new("Settings")
                 .id("settings")
                 .build(app)?;
@@ -124,11 +75,28 @@ pub fn run() {
                 .id("quit")
                 .accelerator("CmdOrCtrl+Q")
                 .build(app)?;
-            let submenu = SubmenuBuilder::new(app, "TextPilot")
+            let app_submenu = SubmenuBuilder::new(app, "TextPilot")
                 .items(&[&settings_item, &quit_item])
                 .build()?;
-            let menu = Menu::with_items(app, &[&submenu])?;
-            app.set_menu(menu)?;
+
+            // Edit submenu: standard clipboard & selection shortcuts for macOS
+            let edit_submenu = SubmenuBuilder::new(app, "Edit")
+                .undo()
+                .redo()
+                .separator()
+                .cut()
+                .copy()
+                .paste()
+                .select_all()
+                .build()?;
+
+            Menu::with_items(app, &[&app_submenu, &edit_submenu])
+        })
+        .setup(|app| {
+            let handle = app.handle().clone();
+            if let Err(err) = bootstrap(&handle) {
+                eprintln!("[desktop/lib] Bootstrap error: {err}");
+            }
 
             app.on_menu_event(|app, event| {
                 match event.id().as_ref() {
@@ -136,7 +104,7 @@ pub fn run() {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
-                            let _ = window.emit("navigate", "settings");
+                            let _ = window.emit("textpilot://open-settings", ());
                         }
                     }
                     "quit" => app.exit(0),

@@ -359,4 +359,7 @@ cargo check
 - [x] `packages/desktop/src-tauri/src/clipboard.rs` — arboard read/write
 - [x] `packages/desktop/src-tauri/src/api.rs` — reqwest SSE streaming to Claude/GPT
 - [x] `packages/desktop/src-tauri/src/{config,error,prompts}.rs` — shared types, typed errors, prompts
+- [x] `packages/desktop/src/HotkeyRecorder.tsx` — keyboard shortcut recorder component
+- [x] `packages/desktop/src/App.tsx` — dual-panel view transitions with switchView state machine, labeled result divider
+- [x] `packages/desktop/src/index.css` — slide-in/out view transitions (250ms cubic-bezier), result-divider row with action label, result area tinted background
 - [ ] `cargo check` — blocked: Rust toolchain not installed on this machine

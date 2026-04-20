@@ -25,6 +25,9 @@ interface StreamError {
   message: string;
 }
 
+const MAIN_HEIGHT = 420;
+const SETTINGS_HEIGHT = 520;
+
 const ACTION_LABEL: Record<Action, string> = {
   grammar: 'Grammar',
   rewrite: 'Rewrite',
@@ -34,9 +37,9 @@ const ACTION_LABEL: Record<Action, string> = {
 };
 
 export function App(): JSX.Element {
-  const [view, setView] = useState<'widget' | 'settings'>('widget');
+  const [view, setView] = useState<'main' | 'settings'>('main');
+  const [prevView, setPrevView] = useState<'main' | 'settings' | null>(null);
   const [text, setText] = useState('');
-  const [original, setOriginal] = useState('');
   const [output, setOutput] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
@@ -100,20 +103,42 @@ export function App(): JSX.Element {
     };
   }, []);
 
+  const switchView = useCallback(
+    (to: 'main' | 'settings') => {
+      if (prevView !== null) return;
+      const height = to === 'settings' ? SETTINGS_HEIGHT : MAIN_HEIGHT;
+      void invoke('resize_window', { height, durationMs: 280 });
+      setPrevView(view);
+      setView(to);
+      setTimeout(() => setPrevView(null), 280);
+    },
+    [view, prevView],
+  );
+
+  useEffect(() => {
+    const unlisten = listen<string>('navigate', (event) => {
+      if (event.payload === 'settings') {
+        switchView('settings');
+      }
+    });
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
+  }, [switchView]);
+
   const runAction = useCallback(
     async (action: Action, textOverride?: string) => {
-      const source = (textOverride ?? (hasResult ? original : text)).trim();
+      const source = (textOverride ?? text).trim();
       if (!source) {
         setStatus('paste text first');
         return;
       }
       if (!config?.apiKey) {
         setStatus('set api key');
-        setView('settings');
+        switchView('settings');
         return;
       }
 
-      setOriginal(source);
       setBusy(true);
       setOutput('');
       setCopied(false);
@@ -144,7 +169,7 @@ export function App(): JSX.Element {
         requestIdRef.current = null;
       }
     },
-    [text, original, hasResult, config],
+    [text, config, switchView],
   );
 
   const handleCopy = useCallback(async () => {
@@ -160,8 +185,8 @@ export function App(): JSX.Element {
   }, [output]);
 
   const handleReset = useCallback(() => {
+    setText('');
     setOutput('');
-    setOriginal('');
     setActiveAction(null);
     setStatus('');
     setCopied(false);
@@ -169,8 +194,7 @@ export function App(): JSX.Element {
 
   const handleClose = useCallback(async () => {
     try {
-      const appWindow = getCurrentWindow();
-      await appWindow.hide();
+      await getCurrentWindow().hide();
     } catch (err) {
       console.error(`${LOG} Hide failed`, err);
     }
@@ -196,132 +220,133 @@ export function App(): JSX.Element {
     }
   }, [config]);
 
-  if (view === 'settings') {
-    return (
-      <Settings
-        onClose={() => {
-          void loadConfig().then((c) => {
-            setConfig(c);
-            setView('widget');
-          });
-        }}
-      />
-    );
-  }
-
   const providerLabel = config?.provider ?? 'not configured';
 
   return (
-    <div className="window">
-      <header className="header" data-tauri-drag-region>
-        <span className="app-badge">TextPilot</span>
-        <div className="header-right">
-          {hasResult && !busy && (
-            <button
-              type="button"
-              className="icon-chip"
-              onClick={handleReset}
-              title="New"
-              aria-label="New"
-            >
-              +
-            </button>
-          )}
-          <button
-            type="button"
-            className="icon-chip"
-            onClick={() => setView('settings')}
-            title="Settings"
-            aria-label="Settings"
-          >
-            ·
-          </button>
-          <button
-            type="button"
-            className="close-btn"
-            onClick={() => void handleClose()}
-            title="Close"
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
-      </header>
+    <div className="view-container">
+      {(view === 'main' || prevView === 'main') && (
+        <div
+          className={`view-panel${prevView !== null ? (view === 'main' ? ' view-enter' : ' view-exit') : ''}`}
+        >
+          <div className="window">
+            <header className="header" data-tauri-drag-region>
+              <span className="app-badge">TextPilot</span>
+              <div className="header-right">
+                {hasResult && !busy && (
+                  <button
+                    type="button"
+                    className="icon-chip"
+                    onClick={handleReset}
+                    title="New"
+                    aria-label="New"
+                  >
+                    +
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="icon-chip"
+                  onClick={() => switchView('settings')}
+                  title="Settings"
+                  aria-label="Settings"
+                >
+                  ·
+                </button>
+                <button
+                  type="button"
+                  className="close-btn"
+                  onClick={() => void handleClose()}
+                  title="Close"
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+            </header>
 
-      <main className="body">
-        {hasResult ? (
-          <>
-            <div
-              className="original-text"
-              title="Click to edit"
-              onClick={() => {
-                setText(original);
-                handleReset();
-              }}
-            >
-              {original}
+            <main className={`body${hasResult ? ' has-result' : ''}`}>
+              <textarea
+                ref={textareaRef}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onPaste={handlePaste}
+                placeholder="Paste or type text here..."
+                autoFocus
+                spellCheck={false}
+              />
+              {hasResult && (
+                <>
+                  <div className="result-divider">
+                    <span className="result-divider-label">
+                      {activeAction} →
+                    </span>
+                  </div>
+                  <div className="result-area" aria-live="polite">
+                    <p className="result-text">
+                      {output}
+                      {busy && <span className="cursor" aria-hidden="true" />}
+                    </p>
+                  </div>
+                </>
+              )}
+            </main>
+
+            <div className="actions">
+              <div className="actions-scroll">
+                {ACTIONS.map((action) => (
+                  <button
+                    key={action}
+                    type="button"
+                    className={`action-btn${activeAction === action ? ' active' : ''}`}
+                    disabled={busy}
+                    onClick={() => void runAction(action)}
+                  >
+                    {ACTION_LABEL[action]}
+                  </button>
+                ))}
+              </div>
+              {hasResult && !busy && (
+                <button
+                  type="button"
+                  className={`copy-btn${copied ? ' copied' : ''}`}
+                  onClick={() => void handleCopy()}
+                  disabled={!output}
+                >
+                  {copied ? 'Copied ✓' : 'Copy'}
+                </button>
+              )}
             </div>
-            <div className="result-area" aria-live="polite">
-              <p className="result-text">
-                {output}
-                {busy && <span className="cursor" aria-hidden="true" />}
-              </p>
-            </div>
-          </>
-        ) : (
-          <div className="input-area">
-            <textarea
-              ref={textareaRef}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onPaste={handlePaste}
-              placeholder="Paste or type text here..."
-              autoFocus
-              spellCheck={false}
-            />
+
+            <footer className="status-bar">
+              {busy && <span className="status-dot" aria-hidden="true" />}
+              <span className="status-text">{status || 'ready'}</span>
+              <label className="auto-run-toggle" title="Auto-run default action on paste">
+                <input
+                  type="checkbox"
+                  checked={config?.autoRunOnPaste ?? false}
+                  onChange={() => void toggleAutoRun()}
+                />
+                auto
+              </label>
+              <span className="provider-badge">{providerLabel}</span>
+            </footer>
           </div>
-        )}
-      </main>
-
-      <div className="actions">
-        <div className="actions-scroll">
-          {ACTIONS.map((action) => (
-            <button
-              key={action}
-              type="button"
-              className={`action-btn${activeAction === action ? ' active' : ''}`}
-              disabled={busy}
-              onClick={() => void runAction(action)}
-            >
-              {ACTION_LABEL[action]}
-            </button>
-          ))}
         </div>
-        {hasResult && !busy && (
-          <button
-            type="button"
-            className={`copy-btn${copied ? ' copied' : ''}`}
-            onClick={() => void handleCopy()}
-            disabled={!output}
-          >
-            {copied ? 'Copied ✓' : 'Copy'}
-          </button>
-        )}
-      </div>
-
-      <footer className="status-bar">
-        {busy && <span className="status-dot" aria-hidden="true" />}
-        <span className="status-text">{status || 'ready'}</span>
-        <label className="auto-run-toggle" title="Auto-run default action on paste">
-          <input
-            type="checkbox"
-            checked={config?.autoRunOnPaste ?? false}
-            onChange={() => void toggleAutoRun()}
+      )}
+      {(view === 'settings' || prevView === 'settings') && (
+        <div
+          className={`view-panel${prevView !== null ? (view === 'settings' ? ' view-enter' : ' view-exit') : ''}`}
+        >
+          <Settings
+            onClose={() => {
+              void loadConfig().then((c) => {
+                setConfig(c);
+                switchView('main');
+              });
+            }}
           />
-          auto
-        </label>
-        <span className="provider-badge">{providerLabel}</span>
-      </footer>
+        </div>
+      )}
     </div>
   );
 }

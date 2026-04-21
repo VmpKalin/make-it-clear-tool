@@ -58,7 +58,9 @@ export function Settings({ onClose }: Props): JSX.Element {
             title="Back"
             aria-label="Back"
           >
-            ‹
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7.5 2L3.5 6L7.5 10" />
+            </svg>
           </button>
           <button
             type="button"
@@ -67,7 +69,9 @@ export function Settings({ onClose }: Props): JSX.Element {
             title="Close"
             aria-label="Close"
           >
-            ×
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+              <path d="M2 2L8 8M8 2L2 8" />
+            </svg>
           </button>
         </div>
       </header>

@@ -178,9 +178,10 @@ body {
   gap: 6px;
 }
 
-.icon-chip {
-  width: 22px;
-  height: 22px;
+.icon-chip,
+.close-btn {
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: transparent;
   border: 0.5px solid var(--border-default);
@@ -189,11 +190,7 @@ body {
   justify-content: center;
   cursor: pointer;
   color: var(--text-secondary);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 18px;
-  font-weight: 400;
   padding: 0;
-  line-height: 1;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
@@ -203,23 +200,9 @@ body {
   border-color: var(--accent-border);
 }
 
-.close-btn {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: transparent;
-  border: 0.5px solid var(--border-default);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 18px;
-  font-weight: 400;
-  padding: 0;
-  line-height: 1;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+.icon-chip:active,
+.close-btn:active {
+  transform: scale(0.92);
 }
 
 .close-btn:hover {

@@ -364,4 +364,6 @@ cargo check
 - [x] `packages/desktop/src/index.css` — slide-in/out view transitions (250ms cubic-bezier), result-divider row with action label, result area tinted background
 - [x] `packages/shared/src/{types,index}.ts` — added shared `ACTION_LABELS` export for single source of action names
 - [x] `packages/desktop/src/{App,Settings}.tsx` — switched to shared action labels, removed duplicated local maps
-- [ ] `cargo check` — blocked: Rust toolchain not installed on this machine
+- [x] `packages/desktop/src-tauri/src/{hotkey,lib}.rs` — registered trigger + per-action global shortcuts and dispatched hotkey payloads to the frontend
+- [x] `packages/desktop/src/{App,Settings,index.css}` — added per-action hotkey controls and desktop handling for action-specific shortcut flows
+- [x] `cargo check` — desktop Rust build passes on this machine

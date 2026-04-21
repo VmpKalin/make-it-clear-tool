@@ -35,6 +35,7 @@ export interface AppConfig {
   hotkeys: HotkeyMap;
   trayEnabled: boolean;
   autoRunOnPaste: boolean;
+  autoCopyResult: boolean;
 }
 
 export interface ActionResult {
@@ -74,4 +75,5 @@ export const DEFAULT_CONFIG: AppConfig = {
   },
   trayEnabled: true,
   autoRunOnPaste: false,
+  autoCopyResult: true,
 };

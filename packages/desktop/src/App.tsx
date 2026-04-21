@@ -12,6 +12,24 @@ import { loadConfig, loadWindowSize, saveConfig, saveWindowSize } from './storag
 
 const LOG = '[desktop/App]';
 
+/** Returns true if the keyboard event matches a hotkey string like "Ctrl+Shift+B". */
+function matchesHotkey(e: KeyboardEvent, hotkey: string): boolean {
+  if (!hotkey) return false;
+  const parts = hotkey.split('+').map((s) => s.trim().toLowerCase());
+  const ctrlNeeded = parts.includes('ctrl');
+  const shiftNeeded = parts.includes('shift');
+  const altNeeded = parts.includes('alt');
+  const metaNeeded = parts.includes('meta');
+  const mainKey = parts.find((p) => !['ctrl', 'shift', 'alt', 'meta'].includes(p));
+  if (!mainKey) return false;
+  if (e.ctrlKey !== ctrlNeeded || e.shiftKey !== shiftNeeded || e.altKey !== altNeeded || e.metaKey !== metaNeeded) return false;
+  let code = e.code;
+  if (code.startsWith('Key')) code = code.slice(3).toLowerCase();
+  else if (code.startsWith('Digit')) code = code.slice(5);
+  else code = code.toLowerCase();
+  return code === mainKey;
+}
+
 interface StreamChunk {
   request_id: string;
   chunk: string;
@@ -25,6 +43,8 @@ interface StreamError {
   request_id: string;
   message: string;
 }
+
+type HotkeyTriggerPayload = Record<string, never>;
 
 type AnimState = 'hidden' | 'appearing' | 'visible' | 'disappearing';
 
@@ -214,13 +234,14 @@ export function App(): JSX.Element {
   }, [switchView]);
 
   const runAction = useCallback(
-    async (action: Action, textOverride?: string) => {
+    async (action: Action, textOverride?: string, configOverride?: AppConfig) => {
       const source = (textOverride ?? text).trim();
+      const activeConfig = configOverride ?? config;
       if (!source) {
         setStatus('paste text first');
         return;
       }
-      if (!config?.apiKey) {
+      if (!activeConfig?.apiKey) {
         setStatus('set api key');
         switchView('settings');
         return;
@@ -241,14 +262,16 @@ export function App(): JSX.Element {
           requestId,
           text: source,
           action,
-          config,
+          config: activeConfig,
         });
 
-        await writeText(result);
-        try {
-          await sendNotification({ title: 'TextPilot', body: 'Done — paste anywhere.' });
-        } catch (err) {
-          console.warn(`${LOG} Notification failed`, err);
+        if (activeConfig.autoCopyResult) {
+          await writeText(result);
+          try {
+            await sendNotification({ title: 'TextPilot', body: 'Done — paste anywhere.' });
+          } catch (err) {
+            console.warn(`${LOG} Notification failed`, err);
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -259,6 +282,40 @@ export function App(): JSX.Element {
     },
     [text, config, switchView, resizeToFit],
   );
+
+  const handleGlobalTrigger = useCallback(() => {
+    if (view !== 'main') {
+      switchView('main');
+    }
+    resetState();
+    setStatus('ready');
+  }, [resetState, switchView, view]);
+
+  useEffect(() => {
+    const unlisten = listen<HotkeyTriggerPayload>('textpilot://hotkey-trigger', () => {
+      handleGlobalTrigger();
+    });
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
+  }, [handleGlobalTrigger]);
+
+  // Local per-action keyboard shortcuts — only fire while the app window is focused.
+  useEffect(() => {
+    const handleActionHotkeys = (e: KeyboardEvent): void => {
+      if (!config?.hotkeys) return;
+      for (const action of ACTIONS) {
+        const hotkey = config.hotkeys[action];
+        if (hotkey && matchesHotkey(e, hotkey)) {
+          e.preventDefault();
+          void runAction(action);
+          return;
+        }
+      }
+    };
+    window.addEventListener('keydown', handleActionHotkeys);
+    return () => window.removeEventListener('keydown', handleActionHotkeys);
+  }, [config, runAction]);
 
   const handleCopy = useCallback(async () => {
     if (!output) return;
@@ -321,6 +378,17 @@ export function App(): JSX.Element {
       await saveConfig(updated);
     } catch (err) {
       console.error(`${LOG} Auto-run save failed`, err);
+    }
+  }, [config]);
+
+  const toggleAutoCopy = useCallback(async () => {
+    if (!config) return;
+    const updated = { ...config, autoCopyResult: !config.autoCopyResult };
+    setConfig(updated);
+    try {
+      await saveConfig(updated);
+    } catch (err) {
+      console.error(`${LOG} Auto-copy save failed`, err);
     }
   }, [config]);
 
@@ -450,13 +518,21 @@ export function App(): JSX.Element {
             <footer className="status-bar">
               {busy && <span className="status-dot" aria-hidden="true" />}
               <span className="status-text">{status || 'ready'}</span>
-              <label className="auto-run-toggle" title="Auto-run default action on paste">
+              <label className="auto-run-toggle" title="Run default action automatically when you paste text">
                 <input
                   type="checkbox"
                   checked={config?.autoRunOnPaste ?? false}
                   onChange={() => void toggleAutoRun()}
                 />
-                auto
+                auto-run
+              </label>
+              <label className="auto-run-toggle" title="Copy result to clipboard automatically when done">
+                <input
+                  type="checkbox"
+                  checked={config?.autoCopyResult ?? true}
+                  onChange={() => void toggleAutoCopy()}
+                />
+                auto-copy
               </label>
               <span className="provider-badge">{providerLabel}</span>
             </footer>

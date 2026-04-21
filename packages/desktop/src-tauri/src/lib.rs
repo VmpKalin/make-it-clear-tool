@@ -11,7 +11,7 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::ShortcutState;
 use tauri_plugin_store::StoreExt;
 
-use crate::config::{Action, AppConfig};
+use crate::config::{Action, AppConfig, HotkeyMap};
 use crate::error::AppResult;
 
 #[tauri::command]
@@ -24,9 +24,11 @@ async fn run_action(
 ) -> Result<String, String> {
     match api::run_action(&app, &request_id, &text, action, &config).await {
         Ok(result) => {
-            if let Err(err) = clipboard::write_result(&result) {
-                api::emit_error(&app, &request_id, &err.to_string());
-                return Err(err.to_string());
+            if config.auto_copy_result {
+                if let Err(err) = clipboard::write_result(&result) {
+                    api::emit_error(&app, &request_id, &err.to_string());
+                    return Err(err.to_string());
+                }
             }
             Ok(result)
         }
@@ -43,8 +45,8 @@ fn read_clipboard_selection() -> Result<String, String> {
 }
 
 #[tauri::command]
-fn update_hotkey(app: AppHandle, trigger: String) -> Result<(), String> {
-    hotkey::register_trigger(&app, &trigger).map_err(|e| e.to_string())
+fn update_hotkeys(app: AppHandle, hotkeys: HotkeyMap) -> Result<(), String> {
+    hotkey::register_hotkeys(&app, &hotkeys).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -55,27 +57,22 @@ fn frontend_ready(app: AppHandle) {
     }
 }
 
-fn load_saved_trigger(app: &AppHandle) -> String {
-    let fallback = config::HotkeyMap::default().trigger;
+pub(crate) fn load_saved_config(app: &AppHandle) -> AppConfig {
     let Ok(store) = app.store("textpilot.config.json") else {
-        return fallback;
+        return AppConfig::default();
     };
     let Some(value) = store.get("config") else {
-        return fallback;
+        return AppConfig::default();
     };
-    value
-        .get("hotkeys")
-        .and_then(|h| h.get("trigger"))
-        .and_then(|t| t.as_str())
-        .map(String::from)
-        .unwrap_or(fallback)
+
+    serde_json::from_value::<AppConfig>(value.clone()).unwrap_or_default()
 }
 
 fn bootstrap(app: &AppHandle) -> AppResult<()> {
     tray::build(app)?;
-    let trigger = load_saved_trigger(app);
-    if let Err(err) = hotkey::register_trigger(app, &trigger) {
-        eprintln!("[desktop/lib] Failed to register hotkey '{trigger}': {err}");
+    let config = load_saved_config(app);
+    if let Err(err) = hotkey::register_hotkeys(app, &config.hotkeys) {
+        eprintln!("[desktop/lib] Failed to register hotkeys: {err}");
     }
     Ok(())
 }
@@ -93,14 +90,14 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, _shortcut, event| {
+                .with_handler(|app, shortcut, event| {
                     if event.state() == ShortcutState::Pressed {
-                        hotkey::dispatch_trigger(app);
+                        hotkey::dispatch_shortcut(app, &shortcut);
                     }
                 })
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![run_action, read_clipboard_selection, update_hotkey, frontend_ready])
+        .invoke_handler(tauri::generate_handler![run_action, read_clipboard_selection, update_hotkeys, frontend_ready])
         .setup(|app| {
             let handle = app.handle().clone();
             if let Err(err) = bootstrap(&handle) {

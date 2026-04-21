@@ -144,7 +144,7 @@ export function App(): JSX.Element {
       });
       if (clear) resetState();
       setAnim('hidden');
-    }, 150);
+    }, 200);
   }, [resetState]);
 
   useEffect(() => {
@@ -193,7 +193,7 @@ export function App(): JSX.Element {
       const h = el?.offsetHeight ?? 200;
       setOrigin(cornerOrigin(relX, relY, w, h));
       setAnim('appearing');
-      setTimeout(() => setAnim('visible'), 200);
+      setTimeout(() => setAnim('visible'), 280);
     });
     return () => { void unlisten.then((fn) => fn()); };
   }, []);

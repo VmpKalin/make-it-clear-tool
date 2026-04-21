@@ -265,11 +265,13 @@ export function App(): JSX.Element {
           config: activeConfig,
         });
 
-        await writeText(result);
-        try {
-          await sendNotification({ title: 'TextPilot', body: 'Done — paste anywhere.' });
-        } catch (err) {
-          console.warn(`${LOG} Notification failed`, err);
+        if (activeConfig.autoCopyResult) {
+          await writeText(result);
+          try {
+            await sendNotification({ title: 'TextPilot', body: 'Done — paste anywhere.' });
+          } catch (err) {
+            console.warn(`${LOG} Notification failed`, err);
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -376,6 +378,17 @@ export function App(): JSX.Element {
       await saveConfig(updated);
     } catch (err) {
       console.error(`${LOG} Auto-run save failed`, err);
+    }
+  }, [config]);
+
+  const toggleAutoCopy = useCallback(async () => {
+    if (!config) return;
+    const updated = { ...config, autoCopyResult: !config.autoCopyResult };
+    setConfig(updated);
+    try {
+      await saveConfig(updated);
+    } catch (err) {
+      console.error(`${LOG} Auto-copy save failed`, err);
     }
   }, [config]);
 
@@ -505,13 +518,21 @@ export function App(): JSX.Element {
             <footer className="status-bar">
               {busy && <span className="status-dot" aria-hidden="true" />}
               <span className="status-text">{status || 'ready'}</span>
-              <label className="auto-run-toggle" title="Auto-run default action on paste">
+              <label className="auto-run-toggle" title="Run default action automatically when you paste text">
                 <input
                   type="checkbox"
                   checked={config?.autoRunOnPaste ?? false}
                   onChange={() => void toggleAutoRun()}
                 />
-                auto
+                auto-run
+              </label>
+              <label className="auto-run-toggle" title="Copy result to clipboard automatically when done">
+                <input
+                  type="checkbox"
+                  checked={config?.autoCopyResult ?? true}
+                  onChange={() => void toggleAutoCopy()}
+                />
+                auto-copy
               </label>
               <span className="provider-badge">{providerLabel}</span>
             </footer>

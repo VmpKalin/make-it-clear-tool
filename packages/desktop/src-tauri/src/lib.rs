@@ -24,9 +24,11 @@ async fn run_action(
 ) -> Result<String, String> {
     match api::run_action(&app, &request_id, &text, action, &config).await {
         Ok(result) => {
-            if let Err(err) = clipboard::write_result(&result) {
-                api::emit_error(&app, &request_id, &err.to_string());
-                return Err(err.to_string());
+            if config.auto_copy_result {
+                if let Err(err) = clipboard::write_result(&result) {
+                    api::emit_error(&app, &request_id, &err.to_string());
+                    return Err(err.to_string());
+                }
             }
             Ok(result)
         }

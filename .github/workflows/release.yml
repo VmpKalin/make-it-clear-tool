@@ -119,6 +119,9 @@ jobs:
           name: windows-artifacts
           path: artifacts/windows
 
+      - name: List downloaded artifacts
+        run: find artifacts/ -type f
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -126,8 +129,8 @@ jobs:
           generate_release_notes: true
           make_latest: true
           files: |
-            artifacts/macos/*.dmg
-            artifacts/windows/*.msi
-            artifacts/windows/*.exe
+            artifacts/**/*.dmg
+            artifacts/**/*.msi
+            artifacts/**/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

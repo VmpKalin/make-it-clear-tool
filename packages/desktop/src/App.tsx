@@ -7,6 +7,7 @@ import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { sendNotification } from '@tauri-apps/plugin-notification';
+import { Help } from './Help.js';
 import { Settings } from './Settings.js';
 import { loadConfig, loadWindowSize, saveConfig, saveWindowSize } from './storage.js';
 
@@ -54,12 +55,28 @@ function cornerOrigin(relX: number, relY: number, w: number, h: number): string 
   return `${left ? 'left' : 'right'} ${top ? 'top' : 'bottom'}`;
 }
 
+function parseError(raw: string): { message: string; authRelated: boolean } {
+  const lower = raw.toLowerCase();
+  if (lower.includes('401') || lower.includes('unauthorized') || lower.includes('invalid.*key'))
+    return { message: 'Invalid API key. Check your key in Settings.', authRelated: true };
+  if (lower.includes('429') || lower.includes('rate limit'))
+    return { message: 'Rate limit reached. Try again in a moment.', authRelated: false };
+  if (lower.includes('network') || lower.includes('fetch') || lower.includes('connect') || lower.includes('dns') || lower.includes('timeout'))
+    return { message: 'No connection. Check your internet.', authRelated: false };
+  if (lower.includes('403') || lower.includes('forbidden'))
+    return { message: 'Access denied. Check your API key permissions.', authRelated: true };
+  if (lower.includes('500') || lower.includes('internal server'))
+    return { message: 'Provider error. Try again in a moment.', authRelated: false };
+  return { message: 'Something went wrong. Try again.', authRelated: false };
+}
+
 export function App(): JSX.Element {
-  const [view, setView] = useState<'main' | 'settings'>('main');
-  const [prevView, setPrevView] = useState<'main' | 'settings' | null>(null);
+  const [view, setView] = useState<'main' | 'settings' | 'help'>('main');
+  const [prevView, setPrevView] = useState<'main' | 'settings' | 'help' | null>(null);
   const [text, setText] = useState('');
   const [output, setOutput] = useState('');
   const [status, setStatus] = useState('');
+  const [error, setError] = useState<{ message: string; authRelated: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [activeAction, setActiveAction] = useState<Action | null>(null);
   const [copied, setCopied] = useState(false);
@@ -71,6 +88,8 @@ export function App(): JSX.Element {
   const resultRef = useRef<HTMLParagraphElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hidingRef = useRef(false);
+  const lastInputRef = useRef('');
+  const textRef = useRef('');
 
   const hasResult = busy || output.length > 0;
 
@@ -94,16 +113,28 @@ export function App(): JSX.Element {
     });
   }, []);
 
+  const errorTimerRef = useRef<number | undefined>(undefined);
+
+  const showError = useCallback((raw: string) => {
+    const parsed = parseError(raw);
+    setError(parsed);
+    setStatus('error');
+    window.clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = window.setTimeout(() => setError(null), 6000);
+  }, []);
+
   const resetState = useCallback(() => {
     setText('');
     setOutput('');
     setActiveAction(null);
     setStatus('');
+    setError(null);
     setCopied(false);
     requestIdRef.current = null;
+    window.clearTimeout(errorTimerRef.current);
   }, []);
 
-  const hideAndReset = useCallback(() => {
+  const hideWindow = useCallback((clear: boolean) => {
     if (hidingRef.current) return;
     hidingRef.current = true;
     setAnim('disappearing');
@@ -111,7 +142,7 @@ export function App(): JSX.Element {
       void getCurrentWindow().hide().catch((err: unknown) => {
         console.warn(`${LOG} Hide failed`, err);
       });
-      resetState();
+      if (clear) resetState();
       setAnim('hidden');
     }, 150);
   }, [resetState]);
@@ -167,6 +198,10 @@ export function App(): JSX.Element {
     return () => { void unlisten.then((fn) => fn()); };
   }, []);
 
+  const hasResultRef = useRef(false);
+  hasResultRef.current = output.length > 0 || busy;
+  textRef.current = text;
+
   useEffect(() => {
     let hideTimeout: number | undefined;
     const unlisten = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
@@ -175,7 +210,7 @@ export function App(): JSX.Element {
         textareaRef.current?.focus();
       } else {
         hideTimeout = window.setTimeout(() => {
-          void hideAndReset();
+          hideWindow(hasResultRef.current);
         }, 200);
       }
     });
@@ -183,7 +218,7 @@ export function App(): JSX.Element {
       window.clearTimeout(hideTimeout);
       void unlisten.then((fn) => fn());
     };
-  }, [hideAndReset]);
+  }, [hideWindow]);
 
   useEffect(() => {
     const unlistenChunk = listen<StreamChunk>('textpilot://stream-chunk', (event) => {
@@ -203,7 +238,7 @@ export function App(): JSX.Element {
     const unlistenError = listen<StreamError>('textpilot://stream-error', (event) => {
       if (event.payload.request_id !== requestIdRef.current) return;
       setBusy(false);
-      setStatus(`error: ${event.payload.message}`);
+      showError(event.payload.message);
       requestIdRef.current = null;
     });
 
@@ -212,10 +247,10 @@ export function App(): JSX.Element {
       void unlistenDone.then((fn) => fn());
       void unlistenError.then((fn) => fn());
     };
-  }, [resizeToFit]);
+  }, [resizeToFit, showError]);
 
   const switchView = useCallback(
-    (to: 'main' | 'settings') => {
+    (to: 'main' | 'settings' | 'help') => {
       if (prevView !== null) return;
       setPrevView(view);
       setView(to);
@@ -247,6 +282,7 @@ export function App(): JSX.Element {
         return;
       }
 
+      lastInputRef.current = source;
       setBusy(true);
       setOutput('');
       setCopied(false);
@@ -275,7 +311,7 @@ export function App(): JSX.Element {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        setStatus(`error: ${message}`);
+        showError(message);
         setBusy(false);
         requestIdRef.current = null;
       }
@@ -287,9 +323,7 @@ export function App(): JSX.Element {
     if (view !== 'main') {
       switchView('main');
     }
-    resetState();
-    setStatus('ready');
-  }, [resetState, switchView, view]);
+  }, [switchView, view]);
 
   useEffect(() => {
     const unlisten = listen<HotkeyTriggerPayload>('textpilot://hotkey-trigger', () => {
@@ -340,16 +374,20 @@ export function App(): JSX.Element {
 
   const handleReset = resetState;
 
-  const handleClose = hideAndReset;
+  const handleClose = useCallback(() => hideWindow(true), [hideWindow]);
 
   useEffect(() => {
     const handleKeydown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        void hideAndReset();
+        hideWindow(true);
         return;
       }
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key === 'e') {
+      if (mod && e.key === 'z' && !hasResultRef.current && !textRef.current && lastInputRef.current) {
+        e.preventDefault();
+        setText(lastInputRef.current);
+        setStatus('restored');
+      } else if (mod && e.key === 'e') {
         e.preventDefault();
         handleEdit();
       } else if (mod && e.key === 'n') {
@@ -359,7 +397,7 @@ export function App(): JSX.Element {
     };
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
-  }, [hideAndReset, handleEdit, handleReset]);
+  }, [hideWindow, handleEdit, handleReset]);
 
   const handlePaste = useCallback(() => {
     if (!config?.autoRunOnPaste) return;
@@ -448,6 +486,19 @@ export function App(): JSX.Element {
                 </button>
                 <button
                   type="button"
+                  className="icon-chip"
+                  onClick={() => switchView('help')}
+                  title="Guide"
+                  aria-label="Guide"
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="6" cy="6" r="5" />
+                    <path d="M4.5 4.5C4.5 3.67 5.17 3 6 3C6.83 3 7.5 3.67 7.5 4.5C7.5 5.33 6.83 5.75 6 5.75V6.5" />
+                    <circle cx="6" cy="8.25" r="0.5" fill="currentColor" stroke="none" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
                   className="close-btn"
                   onClick={() => void handleClose()}
                   title="Close"
@@ -465,7 +516,7 @@ export function App(): JSX.Element {
                 <textarea
                   ref={textareaRef}
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => { setText(e.target.value); if (error) setError(null); }}
                   onPaste={handlePaste}
                   placeholder="Paste or type text here..."
                   autoFocus
@@ -488,6 +539,26 @@ export function App(): JSX.Element {
                 </>
               )}
             </main>
+
+            {error && (
+              <div className="error-block">
+                <svg className="error-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
+                  <path d="M7 4V7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  <circle cx="7" cy="9.75" r="0.65" fill="currentColor" />
+                </svg>
+                <span className="error-message">{error.message}</span>
+                {error.authRelated && (
+                  <button
+                    type="button"
+                    className="error-settings-link"
+                    onClick={() => switchView('settings')}
+                  >
+                    Settings
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="actions">
               <div className="actions-scroll">
@@ -551,6 +622,13 @@ export function App(): JSX.Element {
               });
             }}
           />
+        </div>
+      )}
+      {(view === 'help' || prevView === 'help') && (
+        <div
+          className={`view-panel${prevView !== null ? (view === 'help' ? ' view-enter' : ' view-exit') : ''}`}
+        >
+          <Help onClose={() => switchView('main')} config={config} />
         </div>
       )}
     </div>

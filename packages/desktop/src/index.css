@@ -307,6 +307,65 @@ body {
 }
 
 /* ============================
+   Error block
+   ============================ */
+
+.error-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 12px;
+  padding: 10px 14px;
+  background: rgba(226, 75, 74, 0.08);
+  border: 0.5px solid rgba(226, 75, 74, 0.3);
+  border-radius: 8px;
+  animation: error-appear 0.15s ease-out;
+}
+
+@keyframes error-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.error-icon {
+  flex-shrink: 0;
+  color: rgba(226, 75, 74, 0.8);
+}
+
+.error-message {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(226, 75, 74, 0.9);
+  line-height: 1.5;
+}
+
+.error-settings-link {
+  flex-shrink: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: transparent;
+  border: 0.5px solid rgba(226, 75, 74, 0.3);
+  color: rgba(226, 75, 74, 0.8);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.error-settings-link:hover {
+  background: rgba(226, 75, 74, 0.12);
+  color: rgba(226, 75, 74, 1);
+}
+
+/* ============================
    Action buttons
    ============================ */
 
@@ -682,4 +741,191 @@ body {
   font-size: 10px;
   color: var(--text-mono);
   letter-spacing: 0.04em;
+}
+
+/* ============================
+   Help / Guide view
+   ============================ */
+
+.help-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 20px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-elevated) transparent;
+}
+
+.help-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.help-body::-webkit-scrollbar-thumb {
+  background: var(--bg-elevated);
+  border-radius: 2px;
+}
+
+.help-intro {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.help-divider {
+  height: 0;
+  border: none;
+  border-top: 0.5px solid var(--border-subtle);
+  margin: 2px 0;
+}
+
+.help-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.help-section-title {
+  margin: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+
+/* ---- Hotkey rows ---- */
+
+.help-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 24px;
+}
+
+.help-keys {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+  min-width: 100px;
+}
+
+.help-kbd {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-default);
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.help-desc {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.help-hint {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ---- Actions table ---- */
+
+.help-table {
+  width: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+
+.help-table td {
+  padding: 4px 0;
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  vertical-align: baseline;
+}
+
+.help-table-key {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--accent-text);
+  width: 80px;
+  padding-right: 12px;
+}
+
+/* ---- Toggle badges ---- */
+
+.help-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.help-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+}
+
+.help-toggle-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--accent-text);
+  background: var(--accent-muted);
+  border: 0.5px solid var(--accent-border);
+  border-radius: 20px;
+  padding: 2px 9px;
+  flex-shrink: 0;
+  min-width: 72px;
+  text-align: center;
+}
+
+.help-toggle-desc {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ---- Workflow flow ---- */
+
+.help-flow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 2px 0;
+}
+
+.help-flow-step {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-default);
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
+.help-flow-arrow {
+  font-size: 11px;
+  color: var(--text-muted);
 }

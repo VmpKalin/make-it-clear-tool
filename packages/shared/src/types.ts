@@ -71,7 +71,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   defaultAction: 'grammar',
   showUI: false,
   hotkeys: {
-    trigger: 'Ctrl+Shift+Space',
+    trigger: 'Ctrl+Alt+B',
   },
   trayEnabled: true,
   autoRunOnPaste: false,

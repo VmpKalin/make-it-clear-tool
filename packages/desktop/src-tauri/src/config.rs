@@ -42,7 +42,7 @@ pub struct HotkeyMap {
 impl Default for HotkeyMap {
     fn default() -> Self {
         Self {
-            trigger: "Ctrl+Shift+Space".to_string(),
+            trigger: "Ctrl+Alt+B".to_string(),
             grammar: None,
             rewrite: None,
             shorten: None,

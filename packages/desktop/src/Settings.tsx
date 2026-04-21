@@ -24,6 +24,16 @@ export function Settings({ onClose }: Props): JSX.Element {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
+  const updateActionHotkey = (action: Action, value: string | undefined): void => {
+    setConfig((prev) => ({
+      ...prev,
+      hotkeys: {
+        ...prev.hotkeys,
+        [action]: value,
+      },
+    }));
+  };
+
   const handleCloseWindow = useCallback(async () => {
     try {
       const appWindow = getCurrentWindow();
@@ -36,8 +46,8 @@ export function Settings({ onClose }: Props): JSX.Element {
   const handleSave = async (): Promise<void> => {
     setStatus('saving...');
     try {
+      await invoke('update_hotkeys', { hotkeys: config.hotkeys });
       await saveConfig(config);
-      await invoke('update_hotkey', { trigger: config.hotkeys.trigger });
       setStatus('saved');
       setTimeout(() => setStatus(''), 1500);
     } catch (err) {
@@ -115,6 +125,31 @@ export function Settings({ onClose }: Props): JSX.Element {
             value={config.hotkeys.trigger}
             onChange={(trigger) => update('hotkeys', { ...config.hotkeys, trigger })}
           />
+        </div>
+
+        <div className="field">
+          <span className="field-label">Action Hotkeys</span>
+          <div className="hotkey-settings-list">
+            {ACTIONS.map((action) => (
+              <div key={action} className="hotkey-setting-row">
+                <span className="hotkey-setting-label">{ACTION_LABELS[action]}</span>
+                <div className="hotkey-setting-controls">
+                  <HotkeyRecorder
+                    value={config.hotkeys[action] ?? ''}
+                    onChange={(value) => updateActionHotkey(action, value)}
+                  />
+                  <button
+                    type="button"
+                    className="ghost-btn hotkey-clear-btn"
+                    onClick={() => updateActionHotkey(action, undefined)}
+                    disabled={!config.hotkeys[action]}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <label className="field-checkbox">

@@ -404,7 +404,9 @@ export function App(): JSX.Element {
                       title="Edit (Ctrl+E)"
                       aria-label="Edit"
                     >
-                      ←
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8 1L2 6H5V11L11 6H8V1Z" />
+                      </svg>
                     </button>
                     <button
                       type="button"
@@ -413,7 +415,9 @@ export function App(): JSX.Element {
                       title="New (Ctrl+N)"
                       aria-label="New"
                     >
-                      +
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+                        <path d="M6 2.5V9.5M2.5 6H9.5" />
+                      </svg>
                     </button>
                   </>
                 )}
@@ -424,7 +428,10 @@ export function App(): JSX.Element {
                   title="Settings"
                   aria-label="Settings"
                 >
-                  ·
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+                    <circle cx="6" cy="6" r="2" />
+                    <path d="M6 1V2.5M6 9.5V11M1 6H2.5M9.5 6H11M2.1 2.1L3.2 3.2M8.8 8.8L9.9 9.9M9.9 2.1L8.8 3.2M3.2 8.8L2.1 9.9" />
+                  </svg>
                 </button>
                 <button
                   type="button"
@@ -433,7 +440,9 @@ export function App(): JSX.Element {
                   title="Close"
                   aria-label="Close"
                 >
-                  ×
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                    <path d="M2 2L8 8M8 2L2 8" />
+                  </svg>
                 </button>
               </div>
             </header>

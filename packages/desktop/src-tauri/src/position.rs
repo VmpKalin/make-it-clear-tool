@@ -85,9 +85,23 @@ pub fn show_near_cursor(window: &WebviewWindow) {
     let target_x = cur_x + CURSOR_OFFSET_X;
     let target_y = cur_y + CURSOR_OFFSET_Y;
 
-    let (final_x, final_y) = if let Ok(Some(monitor)) = window.current_monitor() {
-        let mon_pos = monitor.position();
-        let mon_size = monitor.size();
+    let cursor_monitor = window.available_monitors().ok().and_then(|monitors| {
+        monitors.into_iter().find(|mon| {
+            let mp = mon.position();
+            let ms = mon.size();
+            cur_x >= mp.x
+                && cur_x < mp.x + ms.width as i32
+                && cur_y >= mp.y
+                && cur_y < mp.y + ms.height as i32
+        })
+    });
+
+    let monitor = cursor_monitor
+        .or_else(|| window.current_monitor().ok().flatten());
+
+    let (final_x, final_y) = if let Some(mon) = monitor {
+        let mon_pos = mon.position();
+        let mon_size = mon.size();
         clamp_to_screen(
             target_x,
             target_y,
@@ -98,25 +112,6 @@ pub fn show_near_cursor(window: &WebviewWindow) {
             mon_size.width as i32,
             mon_size.height as i32,
         )
-    } else if let Ok(monitors) = window.available_monitors() {
-        let mut best = (target_x, target_y);
-        for mon in &monitors {
-            let mp = mon.position();
-            let ms = mon.size();
-            let mx = mp.x;
-            let my = mp.y;
-            let mw = ms.width as i32;
-            let mh = ms.height as i32;
-            if cur_x >= mx && cur_x < mx + mw && cur_y >= my && cur_y < my + mh {
-                best = clamp_to_screen(
-                    target_x, target_y,
-                    win_size.width as i32, win_size.height as i32,
-                    mx, my, mw, mh,
-                );
-                break;
-            }
-        }
-        best
     } else {
         (target_x, target_y)
     };

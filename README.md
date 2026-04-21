@@ -128,4 +128,4 @@ The desktop widget follows a **refined utilitarian** dark theme - `#1c1c1f` back
 
 ## License
 
-Private / unpublished.
+This project is licensed under the [GNU General Public License v3.0](LICENSE).

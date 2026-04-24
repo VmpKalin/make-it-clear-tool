@@ -14,6 +14,23 @@ use tauri_plugin_store::StoreExt;
 use crate::config::{Action, AppConfig, HotkeyMap};
 use crate::error::AppResult;
 
+fn strip_code_fences(text: &str) -> String {
+    let s = text.trim();
+    if !s.starts_with("```") {
+        return s.to_string();
+    }
+    let after_fence = match s.find('\n') {
+        Some(i) => &s[i + 1..],
+        None => return s.to_string(),
+    };
+    let trimmed = after_fence.trim_end();
+    if trimmed.ends_with("```") {
+        trimmed[..trimmed.len() - 3].trim().to_string()
+    } else {
+        after_fence.trim().to_string()
+    }
+}
+
 #[tauri::command]
 async fn run_action(
     app: AppHandle,
@@ -24,13 +41,14 @@ async fn run_action(
 ) -> Result<String, String> {
     match api::run_action(&app, &request_id, &text, action, &config).await {
         Ok(result) => {
+            let cleaned = strip_code_fences(&result);
             if config.auto_copy_result {
-                if let Err(err) = clipboard::write_result(&result) {
+                if let Err(err) = clipboard::write_result(&cleaned) {
                     api::emit_error(&app, &request_id, &err.to_string());
                     return Err(err.to_string());
                 }
             }
-            Ok(result)
+            Ok(cleaned)
         }
         Err(err) => {
             api::emit_error(&app, &request_id, &err.to_string());

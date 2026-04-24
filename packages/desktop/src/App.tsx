@@ -55,6 +55,18 @@ function cornerOrigin(relX: number, relY: number, w: number, h: number): string 
   return `${left ? 'left' : 'right'} ${top ? 'top' : 'bottom'}`;
 }
 
+function stripCodeFences(text: string): string {
+  let s = text.trim();
+  if (!s.startsWith('```')) return s;
+  const firstNl = s.indexOf('\n');
+  if (firstNl === -1) return s;
+  s = s.slice(firstNl + 1);
+  if (s.trimEnd().endsWith('```')) {
+    s = s.slice(0, s.lastIndexOf('```'));
+  }
+  return s.trim();
+}
+
 function parseError(raw: string): { message: string; authRelated: boolean } {
   const lower = raw.toLowerCase();
   if (lower.includes('401') || lower.includes('unauthorized') || lower.includes('invalid.*key'))
@@ -229,6 +241,7 @@ export function App(): JSX.Element {
 
     const unlistenDone = listen<StreamDone>('textpilot://stream-done', (event) => {
       if (event.payload.request_id !== requestIdRef.current) return;
+      setOutput((prev) => stripCodeFences(prev));
       setBusy(false);
       setStatus('done');
       requestIdRef.current = null;
@@ -302,7 +315,7 @@ export function App(): JSX.Element {
         });
 
         if (activeConfig.autoCopyResult) {
-          await writeText(result);
+          await writeText(stripCodeFences(result));
           try {
             await sendNotification({ title: 'TextPilot', body: 'Done — paste anywhere.' });
           } catch (err) {
@@ -562,7 +575,7 @@ export function App(): JSX.Element {
 
             <div className="actions">
               <div className="actions-scroll">
-                {ACTIONS.map((action) => (
+                {ACTIONS.filter((a) => a !== 'bullets').map((action) => (
                   <button
                     key={action}
                     type="button"

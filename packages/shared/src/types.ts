@@ -1,4 +1,4 @@
-export type Action = 'grammar' | 'rewrite' | 'shorten' | 'bullets' | 'translate';
+export type Action = 'grammar' | 'rewrite' | 'shorten' | 'bullets' | 'translate' | 'format';
 
 export type Provider = 'claude' | 'openai';
 
@@ -8,6 +8,7 @@ export const ACTIONS: readonly Action[] = [
   'shorten',
   'bullets',
   'translate',
+  'format',
 ] as const;
 
 export const ACTION_LABELS: Record<Action, string> = {
@@ -16,6 +17,7 @@ export const ACTION_LABELS: Record<Action, string> = {
   shorten: 'Shorten',
   bullets: 'Bullets',
   translate: 'Translate',
+  format: 'Format',
 };
 
 export interface HotkeyMap {
@@ -25,6 +27,7 @@ export interface HotkeyMap {
   shorten?: string;
   bullets?: string;
   translate?: string;
+  format?: string;
 }
 
 export interface AppConfig {

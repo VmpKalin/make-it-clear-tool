@@ -77,7 +77,7 @@ export function Help({ onClose, config }: Props): JSX.Element {
               <tr><td className="help-table-key">Grammar</td><td>Fix spelling, punctuation, and unclear sentences</td></tr>
               <tr><td className="help-table-key">Rewrite</td><td>Improve clarity while keeping your voice</td></tr>
               <tr><td className="help-table-key">Shorten</td><td>Remove filler, keep the meaning</td></tr>
-              <tr><td className="help-table-key">Bullets</td><td>Convert text into a bullet point list</td></tr>
+              <tr><td className="help-table-key">Format</td><td>Fix grammar + clean up spacing, indentation, line breaks</td></tr>
               <tr><td className="help-table-key">Translate</td><td>English ↔ Ukrainian, auto-detected</td></tr>
             </tbody>
           </table>

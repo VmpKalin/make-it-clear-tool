@@ -9,6 +9,7 @@ pub fn system_prompt(action: Action) -> &'static str {
         Action::Shorten => "shorten",
         Action::Bullets => "bullets",
         Action::Translate => "translate",
+        Action::Format => "format",
     };
 
     parse_section(slug).unwrap_or_else(|| {

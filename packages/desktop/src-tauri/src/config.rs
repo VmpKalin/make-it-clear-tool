@@ -15,6 +15,7 @@ pub enum Action {
     Shorten,
     Bullets,
     Translate,
+    Format,
 }
 
 impl Action {
@@ -25,6 +26,7 @@ impl Action {
             Action::Shorten => "run-shorten",
             Action::Bullets => "run-bullets",
             Action::Translate => "run-translate",
+            Action::Format => "run-format",
         }
     }
 }
@@ -37,6 +39,7 @@ pub struct HotkeyMap {
     pub shorten: Option<String>,
     pub bullets: Option<String>,
     pub translate: Option<String>,
+    pub format: Option<String>,
 }
 
 impl Default for HotkeyMap {
@@ -48,6 +51,7 @@ impl Default for HotkeyMap {
             shorten: None,
             bullets: None,
             translate: None,
+            format: None,
         }
     }
 }

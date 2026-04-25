@@ -32,8 +32,10 @@ impl Action {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HotkeyMap {
     pub trigger: String,
+    pub quick_action: Option<String>,
     pub grammar: Option<String>,
     pub rewrite: Option<String>,
     pub shorten: Option<String>,
@@ -46,6 +48,7 @@ impl Default for HotkeyMap {
     fn default() -> Self {
         Self {
             trigger: "Ctrl+Alt+B".to_string(),
+            quick_action: None,
             grammar: None,
             rewrite: None,
             shorten: None,

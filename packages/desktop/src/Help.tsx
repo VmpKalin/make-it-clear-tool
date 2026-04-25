@@ -25,7 +25,8 @@ function Row({ keys, desc }: { keys: string[]; desc: string }): JSX.Element {
 }
 
 export function Help({ onClose, config }: Props): JSX.Element {
-  const triggerKeys = (config?.hotkeys?.trigger || 'Ctrl+Shift+Space').split('+').map((s) => s.trim());
+  const triggerKeys = (config?.hotkeys?.trigger || 'Ctrl+Alt+B').split('+').map((s) => s.trim());
+  const quickActionKeys = config?.hotkeys?.quickAction?.split('+').map((s) => s.trim());
 
   const handleClose = useCallback(async () => {
     try {
@@ -87,7 +88,10 @@ export function Help({ onClose, config }: Props): JSX.Element {
 
         <section className="help-section">
           <h3 className="help-section-title">Global</h3>
-          <Row keys={triggerKeys} desc="Open TextPilot from anywhere" />
+          <Row keys={triggerKeys} desc="Open TextPilot window" />
+          {quickActionKeys && (
+            <Row keys={quickActionKeys} desc="Quick action — grab text, run, copy result" />
+          )}
           <p className="help-hint">System-wide — works even when the app is in background. Configurable in Settings.</p>
         </section>
 

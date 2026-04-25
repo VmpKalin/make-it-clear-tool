@@ -124,11 +124,20 @@ export function Settings({ onClose }: Props): JSX.Element {
         </div>
 
         <div className="field">
-          <span className="field-label">Hotkey Trigger</span>
+          <span className="field-label">Open Window</span>
           <HotkeyRecorder
             value={config.hotkeys.trigger}
             onChange={(trigger) => update('hotkeys', { ...config.hotkeys, trigger })}
           />
+        </div>
+
+        <div className="field">
+          <span className="field-label">Quick Action</span>
+          <HotkeyRecorder
+            value={config.hotkeys.quickAction ?? ''}
+            onChange={(quickAction) => update('hotkeys', { ...config.hotkeys, quickAction: quickAction || undefined })}
+          />
+          <span className="field-sub-label">Grabs selected text, runs default action, copies result to clipboard</span>
         </div>
 
         <div className="field">

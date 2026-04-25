@@ -22,6 +22,7 @@ export const ACTION_LABELS: Record<Action, string> = {
 
 export interface HotkeyMap {
   trigger: string;
+  quickAction?: string;
   grammar?: string;
   rewrite?: string;
   shorten?: string;

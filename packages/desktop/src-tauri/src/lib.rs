@@ -14,7 +14,7 @@ use tauri_plugin_store::StoreExt;
 use crate::config::{Action, AppConfig, HotkeyMap};
 use crate::error::AppResult;
 
-fn strip_code_fences(text: &str) -> String {
+pub(crate) fn strip_code_fences(text: &str) -> String {
     let s = text.trim();
     if !s.starts_with("```") {
         return s.to_string();

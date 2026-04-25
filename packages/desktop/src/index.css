@@ -675,7 +675,7 @@ body {
 
 .field-checkbox {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   font-size: 12px;
   font-weight: 400;
@@ -688,7 +688,15 @@ body {
   accent-color: var(--accent);
   width: 13px;
   height: 13px;
-  margin: 0;
+  margin: 3px 0 0;
+  flex-shrink: 0;
+}
+
+.field-sub-label {
+  display: block;
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 2px;
 }
 
 .settings-footer {

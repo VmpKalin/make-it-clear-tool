@@ -307,6 +307,74 @@ body {
 }
 
 /* ============================
+   Accessibility notice
+   ============================ */
+
+.access-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 12px;
+  padding: 10px 14px;
+  background: rgba(217, 169, 56, 0.08);
+  border: 0.5px solid rgba(217, 169, 56, 0.25);
+  border-radius: 8px;
+  animation: error-appear 0.15s ease-out;
+}
+
+.access-notice-icon {
+  flex-shrink: 0;
+  color: rgba(217, 169, 56, 0.8);
+}
+
+.access-notice-text {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(217, 169, 56, 0.9);
+  line-height: 1.5;
+}
+
+.access-notice-btn {
+  flex-shrink: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: transparent;
+  border: 0.5px solid rgba(217, 169, 56, 0.3);
+  color: rgba(217, 169, 56, 0.85);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.access-notice-btn:hover {
+  background: rgba(217, 169, 56, 0.12);
+  color: rgba(217, 169, 56, 1);
+}
+
+.access-notice-close {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: rgba(217, 169, 56, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+
+.access-notice-close:hover {
+  color: rgba(217, 169, 56, 0.8);
+}
+
+/* ============================
    Error block
    ============================ */
 

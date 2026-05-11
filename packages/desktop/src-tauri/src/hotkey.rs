@@ -6,7 +6,7 @@ use tauri_plugin_notification::NotificationExt;
 use crate::config::HotkeyMap;
 use crate::error::{AppError, AppResult};
 
-const GRAB_DELAY_MS: u64 = 200;
+const GRAB_DELAY_MS: u64 = 300;
 
 #[derive(Clone, Serialize)]
 pub struct HotkeyTriggerPayload {}
@@ -41,8 +41,14 @@ pub fn register_hotkeys(app: &AppHandle, hotkeys: &HotkeyMap) -> AppResult<()> {
 }
 
 fn grab_selection() -> String {
+    // Clear clipboard so we can detect if Cmd+C actually delivered.
+    // Without this, stale clipboard content is mistaken for selected text.
+    let _ = crate::clipboard::clear();
+    std::thread::sleep(std::time::Duration::from_millis(50));
+
     crate::clipboard::simulate_copy();
     std::thread::sleep(std::time::Duration::from_millis(GRAB_DELAY_MS));
+
     let text = crate::clipboard::read_selection().unwrap_or_default();
     println!("[desktop/hotkey] Grabbed {} chars from clipboard", text.len());
     text
@@ -95,9 +101,20 @@ fn dispatch_quick_action(app: &AppHandle) {
 
     let app_handle = app.clone();
     std::thread::spawn(move || {
+        // Check Accessibility permission BEFORE attempting copy.
+        // CGEventPost silently drops events without it — no point trying.
+        if !crate::accessibility::is_granted() {
+            println!("[desktop/hotkey] Quick-action: Accessibility permission not granted");
+            if let Some(window) = app_handle.get_webview_window("main") {
+                crate::position::show_near_cursor(&window);
+            }
+            let _ = app_handle.emit("textpilot://accessibility-missing", ());
+            return;
+        }
+
         let text = grab_selection();
         if text.trim().is_empty() {
-            println!("[desktop/hotkey] Quick-action: no text available");
+            println!("[desktop/hotkey] Quick-action: no text selected");
             return;
         }
 

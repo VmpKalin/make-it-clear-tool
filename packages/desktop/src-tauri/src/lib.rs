@@ -1,3 +1,4 @@
+mod accessibility;
 mod api;
 mod clipboard;
 mod config;
@@ -86,6 +87,11 @@ pub(crate) fn load_saved_config(app: &AppHandle) -> AppConfig {
     serde_json::from_value::<AppConfig>(value.clone()).unwrap_or_default()
 }
 
+#[tauri::command]
+fn open_accessibility_settings() {
+    accessibility::open_settings();
+}
+
 fn bootstrap(app: &AppHandle) -> AppResult<()> {
     tray::build(app)?;
     let config = load_saved_config(app);
@@ -115,7 +121,7 @@ pub fn run() {
                 })
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![run_action, read_clipboard_selection, update_hotkeys, frontend_ready])
+        .invoke_handler(tauri::generate_handler![run_action, read_clipboard_selection, update_hotkeys, frontend_ready, open_accessibility_settings])
         .setup(|app| {
             let handle = app.handle().clone();
             if let Err(err) = bootstrap(&handle) {

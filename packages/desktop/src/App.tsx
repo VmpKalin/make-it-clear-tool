@@ -103,6 +103,8 @@ export function App(): JSX.Element {
   const lastInputRef = useRef('');
   const textRef = useRef('');
 
+  const [accessNotice, setAccessNotice] = useState(false);
+
   const hasResult = busy || output.length > 0;
 
   const MAX_HEIGHT = 500;
@@ -280,6 +282,15 @@ export function App(): JSX.Element {
       void unlisten.then((fn) => fn());
     };
   }, [switchView]);
+
+  useEffect(() => {
+    const unlisten = listen('textpilot://accessibility-missing', () => {
+      setAccessNotice(true);
+    });
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
+  }, []);
 
   const runAction = useCallback(
     async (action: Action, textOverride?: string, configOverride?: AppConfig) => {
@@ -552,6 +563,39 @@ export function App(): JSX.Element {
                 </>
               )}
             </main>
+
+            {accessNotice && (
+              <div className="access-notice">
+                <svg className="access-notice-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
+                  <path d="M7 4V7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  <circle cx="7" cy="9.75" r="0.65" fill="currentColor" />
+                </svg>
+                <span className="access-notice-text">
+                  TextPilot needs Accessibility access to capture selected text from other apps.
+                </span>
+                <button
+                  type="button"
+                  className="access-notice-btn"
+                  onClick={() => {
+                    void invoke('open_accessibility_settings');
+                    setAccessNotice(false);
+                  }}
+                >
+                  Open Settings
+                </button>
+                <button
+                  type="button"
+                  className="access-notice-close"
+                  onClick={() => setAccessNotice(false)}
+                  aria-label="Dismiss"
+                >
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+                    <path d="M1 1L7 7M7 1L1 7" />
+                  </svg>
+                </button>
+              </div>
+            )}
 
             {error && (
               <div className="error-block">

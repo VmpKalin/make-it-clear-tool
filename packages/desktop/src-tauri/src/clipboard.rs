@@ -23,6 +23,21 @@ pub fn write_result(text: &str) -> AppResult<()> {
     Ok(())
 }
 
+pub fn clear() -> AppResult<()> {
+    let mut clipboard = arboard::Clipboard::new()
+        .map_err(|e| AppError::Clipboard(format!("init failed: {e}")))?;
+    clipboard
+        .clear()
+        .map_err(|e| AppError::Clipboard(format!("clear failed: {e}")))?;
+    println!("[desktop/clipboard] Cleared");
+    Ok(())
+}
+
+/// Simulate Cmd+C / Ctrl+C in the frontmost application via synthetic key events.
+///
+/// On macOS this uses CGEventPost which requires **Accessibility** permission.
+/// Without it, events are silently dropped (no error returned).
+/// Check `accessibility::is_granted()` before calling.
 #[cfg(target_os = "windows")]
 pub fn simulate_copy() {
     const VK_SHIFT: u8 = 0x10;
@@ -39,8 +54,7 @@ pub fn simulate_copy() {
 
     // SAFETY: keybd_event is a well-defined Windows API for synthetic key input
     unsafe {
-        // Release modifier keys still held from the hotkey combo (e.g. Ctrl+Alt+B).
-        // Without this, the OS sees Ctrl+Alt+C instead of Ctrl+C.
+        // Release modifier keys still held from the hotkey combo.
         keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
         keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
         keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);
@@ -77,7 +91,9 @@ pub fn simulate_copy() {
     const KVK_ANSI_C: u16 = 8;
     const KCG_EVENT_FLAG_MASK_COMMAND: u64 = 1 << 20;
 
-    // SAFETY: CGEvent API is well-defined for synthetic keyboard events
+    // SAFETY: CGEvent API is well-defined for synthetic keyboard events.
+    // Events are posted at HIDEventTap and delivered to the frontmost app.
+    // Requires Accessibility permission — silently dropped without it.
     unsafe {
         let down = CGEventCreateKeyboardEvent(std::ptr::null_mut(), KVK_ANSI_C, true);
         if !down.is_null() {
@@ -93,7 +109,7 @@ pub fn simulate_copy() {
             CFRelease(up as *const _);
         }
     }
-    println!("[desktop/clipboard] Simulated Cmd+C");
+    println!("[desktop/clipboard] Simulated Cmd+C via CGEventPost");
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]

@@ -9,7 +9,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { Help } from './Help.js';
 import { Settings } from './Settings.js';
 import { loadConfig, loadWindowSize, saveConfig, saveWindowSize } from './storage.js';
-import { matchesHotkey, stripCodeFences, parseError, cornerOrigin } from './utils.js';
+import { matchesHotkey, stripCodeFences, parseError, cornerOrigin, computeResizeTarget } from './utils.js';
 
 const LOG = '[desktop/App]';
 
@@ -57,24 +57,30 @@ export function App(): JSX.Element {
 
   const hasResult = busy || output.length > 0;
 
+  const MIN_HEIGHT = 150;
   const MAX_HEIGHT = 500;
+  const resizeTimerRef = useRef<number | undefined>(undefined);
+  const programmaticResizeRef = useRef(false);
 
   const resizeToFit = useCallback(() => {
-    requestAnimationFrame(async () => {
+    window.clearTimeout(resizeTimerRef.current);
+    resizeTimerRef.current = window.setTimeout(async () => {
       try {
-        const root = document.documentElement;
-        const needed = root.scrollHeight;
+        const needed = document.documentElement.scrollHeight;
         const scale = await getCurrentWindow().scaleFactor();
         const phys = await getCurrentWindow().outerSize();
         const currentLogical = Math.round(phys.height / scale);
-        if (needed > currentLogical && currentLogical < MAX_HEIGHT) {
-          const newH = Math.min(needed, MAX_HEIGHT);
-          await getCurrentWindow().setSize(new LogicalSize(Math.round(phys.width / scale), newH));
+        const target = computeResizeTarget(needed, currentLogical, MIN_HEIGHT, MAX_HEIGHT);
+        if (target !== null) {
+          programmaticResizeRef.current = true;
+          await getCurrentWindow().setSize(
+            new LogicalSize(Math.round(phys.width / scale), target),
+          );
         }
       } catch (err) {
         console.warn(`${LOG} Resize failed`, err);
       }
-    });
+    }, 100);
   }, []);
 
   const errorTimerRef = useRef<number | undefined>(undefined);
@@ -97,7 +103,8 @@ export function App(): JSX.Element {
     setBusy(false);
     requestIdRef.current = null;
     window.clearTimeout(errorTimerRef.current);
-  }, []);
+    setTimeout(() => resizeToFit(), 0);
+  }, [resizeToFit]);
 
   const hideTimerRef = useRef<number | undefined>(undefined);
 
@@ -137,6 +144,10 @@ export function App(): JSX.Element {
     const readyTimer = window.setTimeout(() => { ready = true; }, 1500);
     const unlisten = getCurrentWindow().onResized(() => {
       if (!ready) return;
+      if (programmaticResizeRef.current) {
+        programmaticResizeRef.current = false;
+        return;
+      }
       window.clearTimeout(saveTimeout);
       saveTimeout = window.setTimeout(async () => {
         try {
@@ -346,8 +357,11 @@ export function App(): JSX.Element {
     setCopied(false);
     setBusy(false);
     requestIdRef.current = null;
-    setTimeout(() => textareaRef.current?.focus(), 0);
-  }, []);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+      resizeToFit();
+    }, 0);
+  }, [resizeToFit]);
 
   const handleReset = resetState;
 

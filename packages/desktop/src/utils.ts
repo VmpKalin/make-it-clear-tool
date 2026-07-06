@@ -83,3 +83,13 @@ export function cornerOrigin(relX: number, relY: number, w: number, h: number): 
   const top = relY < h / 2;
   return `${left ? 'left' : 'right'} ${top ? 'top' : 'bottom'}`;
 }
+
+export function computeResizeTarget(
+  scrollHeight: number,
+  currentLogical: number,
+  minHeight: number,
+  maxHeight: number,
+): number | null {
+  const target = Math.max(minHeight, Math.min(scrollHeight, maxHeight));
+  return target !== currentLogical ? target : null;
+}

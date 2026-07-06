@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { HotkeyMap } from '@textpilot/shared';
-import { matchesHotkey, stripCodeFences, parseError, cornerOrigin, findHotkeyConflict } from './utils.js';
+import { matchesHotkey, stripCodeFences, parseError, cornerOrigin, findHotkeyConflict, computeResizeTarget } from './utils.js';
 
 const DEFAULT_HOTKEYS: HotkeyMap = {
   trigger: 'Ctrl+Alt+B',
@@ -224,5 +224,38 @@ describe('cornerOrigin', () => {
 
   it('exact center goes to right bottom', () => {
     expect(cornerOrigin(200, 100, 400, 200)).toBe('right bottom');
+  });
+});
+
+describe('computeResizeTarget', () => {
+  const MIN = 150;
+  const MAX = 500;
+
+  it('returns null when already at target size', () => {
+    expect(computeResizeTarget(300, 300, MIN, MAX)).toBeNull();
+  });
+
+  it('grows when content exceeds current height', () => {
+    expect(computeResizeTarget(400, 300, MIN, MAX)).toBe(400);
+  });
+
+  it('shrinks when content is smaller than current height', () => {
+    expect(computeResizeTarget(200, 400, MIN, MAX)).toBe(200);
+  });
+
+  it('clamps to max height', () => {
+    expect(computeResizeTarget(800, 300, MIN, MAX)).toBe(MAX);
+  });
+
+  it('clamps to min height', () => {
+    expect(computeResizeTarget(50, 300, MIN, MAX)).toBe(MIN);
+  });
+
+  it('returns null when clamped target equals current', () => {
+    expect(computeResizeTarget(50, MIN, MIN, MAX)).toBeNull();
+  });
+
+  it('returns null when at max and content exceeds', () => {
+    expect(computeResizeTarget(800, MAX, MIN, MAX)).toBeNull();
   });
 });

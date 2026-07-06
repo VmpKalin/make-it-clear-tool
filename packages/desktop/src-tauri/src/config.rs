@@ -182,4 +182,28 @@ mod tests {
         assert_eq!(c.hotkeys.trigger, "Ctrl+X");
         assert!(c.hotkeys.quick_action.is_none());
     }
+
+    #[test]
+    fn show_ui_defaults_false_triggers_silent_mode() {
+        let c: AppConfig = serde_json::from_str(r#"{}"#).unwrap();
+        assert!(!c.show_ui, "default show_ui should be false (silent mode)");
+    }
+
+    #[test]
+    fn show_ui_true_triggers_window_mode() {
+        let c: AppConfig = serde_json::from_str(r#"{"showUI":true}"#).unwrap();
+        assert!(c.show_ui);
+    }
+
+    #[test]
+    fn tray_enabled_defaults_true() {
+        let c: AppConfig = serde_json::from_str(r#"{}"#).unwrap();
+        assert!(c.tray_enabled);
+    }
+
+    #[test]
+    fn tray_disabled_via_config() {
+        let c: AppConfig = serde_json::from_str(r#"{"trayEnabled":false}"#).unwrap();
+        assert!(!c.tray_enabled);
+    }
 }

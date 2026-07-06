@@ -235,8 +235,12 @@ fn bootstrap(app: &AppHandle) -> AppResult<()> {
         log::error!("[panic] {info}");
     }));
     migrate_api_key_to_keyring(app);
-    tray::build(app)?;
     let config = load_saved_config(app);
+    if config.tray_enabled {
+        tray::build(app)?;
+    } else {
+        log::info!("[desktop/lib] Tray disabled by config — skipping tray setup");
+    }
     if let Err(err) = hotkey::register_hotkeys(app, &config.hotkeys) {
         log::warn!("[desktop/lib] Failed to register hotkeys: {err}");
     }

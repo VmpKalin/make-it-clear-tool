@@ -224,6 +224,7 @@ export function Settings({ onClose }: Props): JSX.Element {
             onChange={(e) => update('trayEnabled', e.target.checked)}
           />
           Tray icon enabled
+          <span className="field-sub-label">Takes effect on next launch</span>
         </label>
 
         <div className="settings-footer">

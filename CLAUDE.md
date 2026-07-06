@@ -209,12 +209,16 @@ Structured prefix in all logs:
 ### Silent Mode (`showUI: false`) — default
 ```
 User selects text
-→ hotkey / tray click
-→ clipboard read (selected text)
+→ Open Window hotkey fires
+→ showUI=false → delegates to silent quick-action flow
+→ clipboard read (selected text via simulated Ctrl+C)
 → API call fires immediately with defaultAction
 → result streams in background
 → on complete: result written to clipboard
 → system notification: "Done — Ctrl+V to paste"
+
+Note: Quick Action hotkey always runs silently regardless of showUI.
+Tray left-click always opens the window regardless of showUI.
 ```
 
 ### UI Mode (`showUI: true`)

@@ -63,6 +63,12 @@ pub fn dispatch_shortcut(app: &AppHandle, shortcut: &Shortcut) {
 }
 
 fn dispatch_trigger(app: &AppHandle) {
+    let config = crate::load_saved_config(app);
+    if !config.show_ui {
+        log::info!("[desktop/hotkey] Trigger fired — silent mode (showUI=false)");
+        dispatch_quick_action(app);
+        return;
+    }
     log::info!("[desktop/hotkey] Trigger fired — showing window");
     if let Some(window) = app.get_webview_window("main") {
         crate::position::show_near_cursor(&window);

@@ -74,7 +74,7 @@ fn dispatch_quick_action(app: &AppHandle) {
     println!("[desktop/hotkey] Quick-action fired");
     let config = crate::load_saved_config(app);
 
-    if config.api_key.trim().is_empty() {
+    if !crate::keystore::has_api_key(config.provider) {
         println!("[desktop/hotkey] Quick-action: no API key, showing settings");
         if let Some(window) = app.get_webview_window("main") {
             crate::position::show_near_cursor(&window);
@@ -130,12 +130,22 @@ fn dispatch_quick_action(app: &AppHandle) {
                 "[desktop/hotkey] Quick-action: running {:?}",
                 config.default_action
             );
+            let api_key = match crate::keystore::get_api_key(config.provider) {
+                Some(k) => k,
+                None => {
+                    eprintln!("[desktop/hotkey] Quick-action: API key missing from keyring");
+                    let _ = crate::clipboard::restore(&snapshot);
+                    return;
+                }
+            };
+
             match crate::api::run_action(
                 &app_handle,
                 &request_id,
                 &text,
                 config.default_action,
                 &config,
+                &api_key,
             )
             .await
             {

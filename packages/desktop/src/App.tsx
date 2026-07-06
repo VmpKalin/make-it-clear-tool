@@ -6,7 +6,6 @@ import { LogicalSize } from '@tauri-apps/api/dpi';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { sendNotification } from '@tauri-apps/plugin-notification';
 import { Help } from './Help.js';
 import { Settings } from './Settings.js';
 import { loadConfig, loadWindowSize, saveConfig, saveWindowSize } from './storage.js';
@@ -255,18 +254,12 @@ export function App(): JSX.Element {
   }, []);
 
   const runAction = useCallback(
-    async (action: Action, textOverride?: string, configOverride?: AppConfig) => {
+    async (action: Action, textOverride?: string) => {
       if (busy) return;
 
       const source = (textOverride ?? text).trim();
-      const activeConfig = configOverride ?? config;
       if (!source) {
         setStatus('paste text first');
-        return;
-      }
-      if (!activeConfig?.apiKey) {
-        setStatus('set api key');
-        switchView('settings');
         return;
       }
 
@@ -282,23 +275,11 @@ export function App(): JSX.Element {
       requestIdRef.current = requestId;
 
       try {
-        const result = await invoke<string>('run_action', {
+        await invoke<string>('run_action', {
           requestId,
           text: source,
           action,
-          config: activeConfig,
         });
-
-        if (requestIdRef.current !== requestId) return;
-
-        if (activeConfig.autoCopyResult) {
-          await writeText(stripCodeFences(result));
-          try {
-            await sendNotification({ title: 'TextPilot', body: 'Done — paste anywhere.' });
-          } catch (err) {
-            console.warn(`${LOG} Notification failed`, err);
-          }
-        }
       } catch (err) {
         if (requestIdRef.current !== requestId) return;
         const message = err instanceof Error ? err.message : String(err);
@@ -307,7 +288,7 @@ export function App(): JSX.Element {
         requestIdRef.current = null;
       }
     },
-    [busy, text, config, switchView, resizeToFit, showError],
+    [busy, text, resizeToFit, showError],
   );
 
   const handleGlobalTrigger = useCallback(() => {

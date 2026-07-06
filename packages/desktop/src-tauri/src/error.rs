@@ -20,6 +20,9 @@ pub enum AppError {
 
     #[error("[config] {0}")]
     Config(String),
+
+    #[error("[keyring] {0}")]
+    Keyring(String),
 }
 
 impl Serialize for AppError {

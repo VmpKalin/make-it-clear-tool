@@ -42,10 +42,8 @@ pub async fn run_action(
     text: &str,
     action: Action,
     config: &AppConfig,
+    api_key: &str,
 ) -> AppResult<String> {
-    if config.api_key.trim().is_empty() {
-        return Err(AppError::Config("API key is missing".into()));
-    }
     let prompt = system_prompt(action);
     println!(
         "[desktop/api] Streaming provider={:?} action={:?}",
@@ -57,12 +55,12 @@ pub async fn run_action(
         Provider::Claude => reqwest::Client::new()
             .post(CLAUDE_URL)
             .header("content-type", "application/json")
-            .header("x-api-key", &config.api_key)
+            .header("x-api-key", api_key)
             .header("anthropic-version", "2023-06-01"),
         Provider::Openai => reqwest::Client::new()
             .post(OPENAI_URL)
             .header("content-type", "application/json")
-            .header("authorization", format!("Bearer {}", config.api_key)),
+            .header("authorization", format!("Bearer {}", api_key)),
     };
 
     let response = request

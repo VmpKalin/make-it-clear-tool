@@ -25,7 +25,8 @@ export async function loadConfig(): Promise<AppConfig> {
 export async function saveConfig(config: AppConfig): Promise<void> {
   try {
     const store = await load(STORE_FILE, { autoSave: false, defaults: {} });
-    await store.set(CONFIG_KEY, config);
+    const { apiKey: _, ...safeConfig } = config;
+    await store.set(CONFIG_KEY, safeConfig);
     await store.save();
     console.log(`${LOG} Config saved`);
   } catch (err) {

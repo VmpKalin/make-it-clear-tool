@@ -64,8 +64,6 @@ impl Default for HotkeyMap {
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
     pub provider: Provider,
-    #[serde(default)]
-    pub api_key: String,
     pub default_action: Action,
     #[serde(default)]
     pub show_ui: bool,
@@ -87,7 +85,6 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             provider: Provider::Claude,
-            api_key: String::new(),
             default_action: Action::Grammar,
             show_ui: false,
             hotkeys: HotkeyMap::default(),

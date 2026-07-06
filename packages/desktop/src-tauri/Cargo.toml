@@ -27,6 +27,7 @@ tokio = { version = "1", features = ["sync", "macros", "rt-multi-thread"] }
 reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
 futures-util = "0.3"
 arboard = "3"
+keyring = { version = "3", features = [] }
 
 [features]
 default = ["custom-protocol"]

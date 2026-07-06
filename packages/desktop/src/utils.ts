@@ -29,6 +29,8 @@ export function stripCodeFences(text: string): string {
 
 export function parseError(raw: string): { message: string; authRelated: boolean } {
   const lower = raw.toLowerCase();
+  if (lower.includes('api key is missing') || lower.includes('key is missing'))
+    return { message: 'API key missing. Set it in Settings.', authRelated: true };
   if (lower.includes('401') || lower.includes('unauthorized') || lower.includes('invalid.*key'))
     return { message: 'Invalid API key. Check your key in Settings.', authRelated: true };
   if (lower.includes('429') || lower.includes('rate limit'))

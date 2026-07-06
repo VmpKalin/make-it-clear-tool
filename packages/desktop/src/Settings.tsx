@@ -15,10 +15,16 @@ interface Props {
 export function Settings({ onClose }: Props): JSX.Element {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [status, setStatus] = useState('');
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [keyStored, setKeyStored] = useState(false);
 
   useEffect(() => {
     void loadConfig().then(setConfig);
   }, []);
+
+  useEffect(() => {
+    void invoke<boolean>('has_api_key', { provider: config.provider }).then(setKeyStored);
+  }, [config.provider]);
 
   const update = <K extends keyof AppConfig>(key: K, value: AppConfig[K]): void => {
     setConfig((prev) => ({ ...prev, [key]: value }));
@@ -46,6 +52,11 @@ export function Settings({ onClose }: Props): JSX.Element {
   const handleSave = async (): Promise<void> => {
     setStatus('saving...');
     try {
+      if (apiKeyInput.trim()) {
+        await invoke('set_api_key', { provider: config.provider, key: apiKeyInput.trim() });
+        setApiKeyInput('');
+        setKeyStored(true);
+      }
       await invoke('update_hotkeys', { hotkeys: config.hotkeys });
       await saveConfig(config);
       setStatus('saved');
@@ -102,10 +113,10 @@ export function Settings({ onClose }: Props): JSX.Element {
           <span className="field-label">API Key</span>
           <input
             type="password"
-            value={config.apiKey}
+            value={apiKeyInput}
             autoComplete="off"
-            onChange={(e) => update('apiKey', e.target.value)}
-            placeholder="sk-..."
+            onChange={(e) => setApiKeyInput(e.target.value)}
+            placeholder={keyStored ? 'Key saved •••• — enter new to change' : 'sk-...'}
           />
         </div>
 

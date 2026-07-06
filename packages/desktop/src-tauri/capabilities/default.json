@@ -14,10 +14,7 @@
     "core:window:allow-set-size",
     "core:window:allow-outer-size",
     "core:event:default",
-    "global-shortcut:default",
     "store:default",
-    "notification:default",
-    "clipboard-manager:allow-read-text",
     "clipboard-manager:allow-write-text"
   ]
 }

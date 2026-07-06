@@ -368,4 +368,9 @@ cargo check
 - [x] `packages/desktop/src/{App,Settings}.tsx` — switched to shared action labels, removed duplicated local maps
 - [x] `packages/desktop/src-tauri/src/{hotkey,lib}.rs` — registered trigger + per-action global shortcuts and dispatched hotkey payloads to the frontend
 - [x] `packages/desktop/src/{App,Settings,index.css}` — added per-action hotkey controls and desktop handling for action-specific shortcut flows
+- [x] Phase 2 Block 1 — housekeeping: fixed workspace filter names, secured .claude/settings.json, deleted stray schema duplicate, synced docs with reality (6 actions, real tray menu, correct hotkeys)
+- [x] Phase 2 Block 2 — wired showUI (silent mode via hotkey dispatch) + trayEnabled (conditional at startup)
+- [x] Phase 2 Block 3 — scoped Ctrl+E/N/Z to main view, per-action hotkeys yield to built-ins, hotkey uniqueness validation with conflict messages
+- [x] Phase 2 Block 4 — resize throttle (100ms debounce), bidirectional shrink/grow, programmatic resizes not persisted
+- [x] Phase 2 Block 5 — clipboard ops off main thread (spawn_blocking), prompt-injection parity (buildUserPayload + temperature:0 in shared TS)
 - [x] `cargo check` — desktop Rust build passes on this machine

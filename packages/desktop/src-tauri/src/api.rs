@@ -45,7 +45,7 @@ pub async fn run_action(
     api_key: &str,
 ) -> AppResult<String> {
     let prompt = system_prompt(action);
-    println!(
+    log::info!(
         "[desktop/api] Streaming provider={:?} action={:?}",
         config.provider, action
     );

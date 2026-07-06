@@ -16,7 +16,7 @@ pub fn set_api_key(provider: Provider, key: &str) -> AppResult<()> {
     entry
         .set_password(key)
         .map_err(|e| AppError::Keyring(format!("Failed to store API key: {e}")))?;
-    println!("[desktop/keystore] API key stored for {provider:?}");
+    log::info!("[desktop/keystore] API key stored for {provider:?}");
     Ok(())
 }
 
@@ -37,7 +37,7 @@ pub fn clear_api_key(provider: Provider) -> AppResult<()> {
         .map_err(|e| AppError::Keyring(format!("Failed to create keyring entry: {e}")))?;
     match entry.delete_credential() {
         Ok(()) => {
-            println!("[desktop/keystore] API key cleared for {provider:?}");
+            log::info!("[desktop/keystore] API key cleared for {provider:?}");
             Ok(())
         }
         Err(keyring::Error::NoEntry) => Ok(()),

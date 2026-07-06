@@ -13,7 +13,7 @@ pub fn system_prompt(action: Action) -> &'static str {
     };
 
     parse_section(slug).unwrap_or_else(|| {
-        eprintln!("[desktop/prompts] Missing section '## {slug}' in prompts.md");
+        log::warn!("[desktop/prompts] Missing section '## {slug}' in prompts.md");
         "You are a helpful assistant."
     })
 }

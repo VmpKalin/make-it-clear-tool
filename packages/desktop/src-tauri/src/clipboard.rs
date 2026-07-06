@@ -9,7 +9,7 @@ pub fn read_selection() -> AppResult<String> {
         .map_err(|e| AppError::Clipboard(format!("init failed: {e}")))?;
     match clipboard.get_text() {
         Ok(text) => {
-            println!("{LOG} Read {} chars", text.len());
+            log::info!("{LOG} Read {} chars", text.len());
             Ok(text)
         }
         Err(arboard::Error::ContentNotAvailable) => Ok(String::new()),
@@ -23,7 +23,7 @@ pub fn write_result(text: &str) -> AppResult<()> {
     clipboard
         .set_text(text.to_string())
         .map_err(|e| AppError::Clipboard(format!("write failed: {e}")))?;
-    println!("{LOG} Wrote {} chars", text.len());
+    log::info!("{LOG} Wrote {} chars", text.len());
     Ok(())
 }
 
@@ -33,7 +33,7 @@ pub fn restore(text: &str) -> AppResult<()> {
     clipboard
         .set_text(text.to_string())
         .map_err(|e| AppError::Clipboard(format!("restore failed: {e}")))?;
-    println!("{LOG} Restored original clipboard ({} chars)", text.len());
+    log::info!("{LOG} Restored original clipboard ({} chars)", text.len());
     Ok(())
 }
 
@@ -53,7 +53,7 @@ pub fn grab_selection() -> Option<String> {
 
         if change_count() != counter_before {
             let text = read_selection().unwrap_or_default();
-            println!("{LOG} Copy detected after {elapsed}ms, got {} chars", text.len());
+            log::info!("{LOG} Copy detected after {elapsed}ms, got {} chars", text.len());
             if text.trim().is_empty() {
                 return None;
             }
@@ -61,7 +61,7 @@ pub fn grab_selection() -> Option<String> {
         }
 
         if elapsed >= POLL_TIMEOUT_MS {
-            println!("{LOG} Clipboard unchanged after {POLL_TIMEOUT_MS}ms — nothing selected");
+            log::info!("{LOG} Clipboard unchanged after {POLL_TIMEOUT_MS}ms — nothing selected");
             return None;
         }
     }
@@ -154,7 +154,7 @@ pub fn simulate_copy() {
         keybd_event(VK_C, 0, KEYEVENTF_KEYUP, 0);
         keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
     }
-    println!("{LOG} Simulated Ctrl+C");
+    log::info!("{LOG} Simulated Ctrl+C");
 }
 
 #[cfg(target_os = "macos")]
@@ -193,10 +193,10 @@ pub fn simulate_copy() {
             CFRelease(up as *const _);
         }
     }
-    println!("{LOG} Simulated Cmd+C via CGEventPost");
+    log::info!("{LOG} Simulated Cmd+C via CGEventPost");
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn simulate_copy() {
-    println!("{LOG} simulate_copy not supported on this platform");
+    log::info!("{LOG} simulate_copy not supported on this platform");
 }

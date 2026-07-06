@@ -53,7 +53,7 @@ pub fn is_granted() -> bool {
         result
     };
 
-    println!(
+    log::info!(
         "[desktop/accessibility] Permission: {}",
         if trusted { "granted" } else { "NOT granted (prompt shown)" }
     );
@@ -66,7 +66,7 @@ pub fn open_settings() {
     let _ = std::process::Command::new("open")
         .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
         .spawn();
-    println!("[desktop/accessibility] Opened System Settings → Accessibility");
+    log::info!("[desktop/accessibility] Opened System Settings → Accessibility");
 }
 
 #[cfg(not(target_os = "macos"))]

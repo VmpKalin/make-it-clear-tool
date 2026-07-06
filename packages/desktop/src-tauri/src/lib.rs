@@ -91,7 +91,7 @@ fn update_hotkeys(app: AppHandle, hotkeys: HotkeyMap) -> Result<(), String> {
 
 #[tauri::command]
 fn frontend_ready(app: AppHandle) {
-    println!("[desktop/lib] Frontend ready");
+    log::info!("[desktop/lib] Frontend ready");
     if let Some(window) = app.get_webview_window("main") {
         position::show_near_cursor(&window);
     }
@@ -218,7 +218,7 @@ fn migrate_api_key_to_keyring(app: &AppHandle) {
     };
 
     if let Err(e) = keystore::set_api_key(provider, &api_key) {
-        eprintln!("[desktop/lib] API key migration to keyring failed: {e}");
+        log::error!("[desktop/lib] API key migration to keyring failed: {e}");
         return;
     }
 
@@ -227,15 +227,18 @@ fn migrate_api_key_to_keyring(app: &AppHandle) {
     }
     store.set("config", value);
     let _ = store.save();
-    println!("[desktop/lib] Migrated API key from store to OS keyring");
+    log::info!("[desktop/lib] Migrated API key from store to OS keyring");
 }
 
 fn bootstrap(app: &AppHandle) -> AppResult<()> {
+    std::panic::set_hook(Box::new(|info| {
+        log::error!("[panic] {info}");
+    }));
     migrate_api_key_to_keyring(app);
     tray::build(app)?;
     let config = load_saved_config(app);
     if let Err(err) = hotkey::register_hotkeys(app, &config.hotkeys) {
-        eprintln!("[desktop/lib] Failed to register hotkeys: {err}");
+        log::warn!("[desktop/lib] Failed to register hotkeys: {err}");
     }
     Ok(())
 }
@@ -243,6 +246,19 @@ fn bootstrap(app: &AppHandle) -> AppResult<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                        file_name: Some("textpilot".into()),
+                    }),
+                ])
+                .max_file_size(5_000_000)
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(5))
+                .level(log::LevelFilter::Info)
+                .build(),
+        )
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 position::show_near_cursor(&window);
@@ -264,7 +280,7 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
             if let Err(err) = bootstrap(&handle) {
-                eprintln!("[desktop/lib] Bootstrap error: {err}");
+                log::error!("[desktop/lib] Bootstrap error: {err}");
             }
             Ok(())
         })
@@ -272,7 +288,7 @@ pub fn run() {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
-                println!("[desktop/lib] Close intercepted — window hidden");
+                log::info!("[desktop/lib] Close intercepted — window hidden");
             }
         })
         .run(tauri::generate_context!())

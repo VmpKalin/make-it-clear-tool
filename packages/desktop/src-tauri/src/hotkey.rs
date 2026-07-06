@@ -20,7 +20,7 @@ pub fn register_hotkeys(app: &AppHandle, hotkeys: &HotkeyMap) -> AppResult<()> {
             .map_err(|e| AppError::Config(format!("Invalid trigger hotkey '{trimmed}': {e}")))?;
         gs.register(shortcut)
             .map_err(|e| AppError::Config(format!("Failed to register trigger '{trimmed}': {e}")))?;
-        println!("[desktop/hotkey] Registered trigger: {trimmed}");
+        log::info!("[desktop/hotkey] Registered trigger: {trimmed}");
     }
 
     if let Some(ref qa) = hotkeys.quick_action {
@@ -31,7 +31,7 @@ pub fn register_hotkeys(app: &AppHandle, hotkeys: &HotkeyMap) -> AppResult<()> {
                 .map_err(|e| AppError::Config(format!("Invalid quick-action hotkey '{qa_trimmed}': {e}")))?;
             gs.register(shortcut)
                 .map_err(|e| AppError::Config(format!("Failed to register quick-action '{qa_trimmed}': {e}")))?;
-            println!("[desktop/hotkey] Registered quick-action: {qa_trimmed}");
+            log::info!("[desktop/hotkey] Registered quick-action: {qa_trimmed}");
         }
     }
 
@@ -53,7 +53,7 @@ pub fn dispatch_shortcut(app: &AppHandle, shortcut: &Shortcut) {
         .map(|qa_shortcut| qa_shortcut.id() == shortcut.id())
         .unwrap_or(false);
 
-    println!("[desktop/hotkey] Shortcut fired (id={}), is_quick_action={}", shortcut.id(), is_quick_action);
+    log::info!("[desktop/hotkey] Shortcut fired (id={}), is_quick_action={}", shortcut.id(), is_quick_action);
 
     if is_quick_action {
         dispatch_quick_action(app);
@@ -63,7 +63,7 @@ pub fn dispatch_shortcut(app: &AppHandle, shortcut: &Shortcut) {
 }
 
 fn dispatch_trigger(app: &AppHandle) {
-    println!("[desktop/hotkey] Trigger fired — showing window");
+    log::info!("[desktop/hotkey] Trigger fired — showing window");
     if let Some(window) = app.get_webview_window("main") {
         crate::position::show_near_cursor(&window);
     }
@@ -71,11 +71,11 @@ fn dispatch_trigger(app: &AppHandle) {
 }
 
 fn dispatch_quick_action(app: &AppHandle) {
-    println!("[desktop/hotkey] Quick-action fired");
+    log::info!("[desktop/hotkey] Quick-action fired");
     let config = crate::load_saved_config(app);
 
     if !crate::keystore::has_api_key(config.provider) {
-        println!("[desktop/hotkey] Quick-action: no API key, showing settings");
+        log::info!("[desktop/hotkey] Quick-action: no API key, showing settings");
         if let Some(window) = app.get_webview_window("main") {
             crate::position::show_near_cursor(&window);
         }
@@ -86,7 +86,7 @@ fn dispatch_quick_action(app: &AppHandle) {
     let app_handle = app.clone();
     std::thread::spawn(move || {
         if !crate::accessibility::is_granted() {
-            println!("[desktop/hotkey] Quick-action: Accessibility permission not granted");
+            log::warn!("[desktop/hotkey] Quick-action: Accessibility permission not granted");
             let _ = app_handle
                 .notification()
                 .builder()
@@ -105,7 +105,7 @@ fn dispatch_quick_action(app: &AppHandle) {
         let text = match crate::clipboard::grab_selection() {
             Some(t) => t,
             None => {
-                println!("[desktop/hotkey] Quick-action: no text selected");
+                log::info!("[desktop/hotkey] Quick-action: no text selected");
                 let _ = crate::clipboard::restore(&snapshot);
                 let _ = app_handle
                     .notification()
@@ -126,14 +126,14 @@ fn dispatch_quick_action(app: &AppHandle) {
         );
 
         tauri::async_runtime::spawn(async move {
-            println!(
+            log::info!(
                 "[desktop/hotkey] Quick-action: running {:?}",
                 config.default_action
             );
             let api_key = match crate::keystore::get_api_key(config.provider) {
                 Some(k) => k,
                 None => {
-                    eprintln!("[desktop/hotkey] Quick-action: API key missing from keyring");
+                    log::error!("[desktop/hotkey] Quick-action: API key missing from keyring");
                     let _ = crate::clipboard::restore(&snapshot);
                     return;
                 }
@@ -152,7 +152,7 @@ fn dispatch_quick_action(app: &AppHandle) {
                 Ok(result) => {
                     let cleaned = crate::strip_code_fences(&result);
                     if let Err(err) = crate::clipboard::write_result(&cleaned) {
-                        eprintln!("[desktop/hotkey] Quick-action clipboard write failed: {err}");
+                        log::error!("[desktop/hotkey] Quick-action clipboard write failed: {err}");
                         let _ = crate::clipboard::restore(&snapshot);
                         return;
                     }
@@ -164,7 +164,7 @@ fn dispatch_quick_action(app: &AppHandle) {
                         .show();
                 }
                 Err(err) => {
-                    eprintln!("[desktop/hotkey] Quick-action failed: {err}");
+                    log::error!("[desktop/hotkey] Quick-action failed: {err}");
                     let _ = crate::clipboard::restore(&snapshot);
                     let _ = app_handle
                         .notification()

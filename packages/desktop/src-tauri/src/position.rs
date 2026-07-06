@@ -191,7 +191,7 @@ pub fn show_near_cursor(window: &WebviewWindow) {
     let _ = window.show();
     let _ = window.set_focus();
 
-    println!(
+    log::info!(
         "[desktop/position] Window at ({final_x}, {final_y}), cursor relative: ({cursor_rel_x}, {cursor_rel_y})"
     );
 }

@@ -19,6 +19,7 @@ pub enum Action {
 }
 
 impl Action {
+    #[allow(dead_code)]
     pub fn command_id(&self) -> &'static str {
         match self {
             Action::Grammar => "run-grammar",

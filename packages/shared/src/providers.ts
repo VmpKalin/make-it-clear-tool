@@ -10,7 +10,7 @@ const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 export const CLAUDE_MODEL = 'claude-haiku-4-5';
 export const OPENAI_MODEL = 'gpt-4o-mini';
 
-export const MAX_TOKENS = 2048;
+export const MAX_TOKENS = 8192;
 
 export async function* runAction(params: RunActionParams): AsyncIterable<string> {
   const { text, action, config, systemPrompt, signal } = params;
@@ -64,6 +64,8 @@ async function* streamClaude(
     throw new ProviderError('claude', `HTTP ${response.status}: ${body}`, response.status);
   }
 
+  let truncated = false;
+
   for await (const event of iterateSse(response.body)) {
     if (!event.data || event.data === '[DONE]') continue;
     try {
@@ -72,7 +74,12 @@ async function* streamClaude(
         const chunk = json.delta.text ?? '';
         if (chunk) yield chunk;
       } else if (json.type === 'message_stop') {
+        if (truncated) {
+          throw new ProviderError('claude', 'Response was truncated (hit token limit). The result may be incomplete.');
+        }
         return;
+      } else if (json.type === 'message_delta' && json.delta?.stop_reason === 'max_tokens') {
+        truncated = true;
       } else if (json.type === 'error') {
         throw new ProviderError('claude', json.error?.message ?? 'Unknown stream error');
       }
@@ -80,6 +87,10 @@ async function* streamClaude(
       if (cause instanceof ProviderError) throw cause;
       console.error(`${LOG} Failed to parse Claude SSE chunk`, event.data, cause);
     }
+  }
+
+  if (truncated) {
+    throw new ProviderError('claude', 'Response was truncated (hit token limit). The result may be incomplete.');
   }
 }
 
@@ -99,6 +110,7 @@ async function* streamOpenAI(
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
+        max_tokens: MAX_TOKENS,
         stream: true,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -116,16 +128,31 @@ async function* streamOpenAI(
     throw new ProviderError('openai', `HTTP ${response.status}: ${body}`, response.status);
   }
 
+  let truncated = false;
+
   for await (const event of iterateSse(response.body)) {
     if (!event.data) continue;
-    if (event.data === '[DONE]') return;
+    if (event.data === '[DONE]') {
+      if (truncated) {
+        throw new ProviderError('openai', 'Response was truncated (hit token limit). The result may be incomplete.');
+      }
+      return;
+    }
     try {
       const json = JSON.parse(event.data) as OpenAIStreamEvent;
-      const chunk = json.choices?.[0]?.delta?.content ?? '';
+      const choice = json.choices?.[0];
+      if (choice?.finish_reason === 'length') {
+        truncated = true;
+      }
+      const chunk = choice?.delta?.content ?? '';
       if (chunk) yield chunk;
     } catch (cause) {
       console.error(`${LOG} Failed to parse OpenAI SSE chunk`, event.data, cause);
     }
+  }
+
+  if (truncated) {
+    throw new ProviderError('openai', 'Response was truncated (hit token limit). The result may be incomplete.');
   }
 }
 
@@ -137,12 +164,22 @@ async function safeReadError(response: Response): Promise<string> {
   }
 }
 
-interface SseEvent {
+export interface SseEvent {
   event?: string;
   data: string;
 }
 
-async function* iterateSse(body: ReadableStream<Uint8Array>): AsyncIterable<SseEvent> {
+export function findEventBoundary(buffer: string): { index: number; length: number } | null {
+  const crlfIdx = buffer.indexOf('\r\n\r\n');
+  const lfIdx = buffer.indexOf('\n\n');
+  if (crlfIdx === -1 && lfIdx === -1) return null;
+  if (crlfIdx !== -1 && (lfIdx === -1 || crlfIdx < lfIdx)) {
+    return { index: crlfIdx, length: 4 };
+  }
+  return { index: lfIdx, length: 2 };
+}
+
+export async function* iterateSse(body: ReadableStream<Uint8Array>): AsyncIterable<SseEvent> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -151,10 +188,10 @@ async function* iterateSse(body: ReadableStream<Uint8Array>): AsyncIterable<SseE
       const { value, done } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-      let sepIndex: number;
-      while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
-        const rawEvent = buffer.slice(0, sepIndex);
-        buffer = buffer.slice(sepIndex + 2);
+      let sep: { index: number; length: number } | null;
+      while ((sep = findEventBoundary(buffer)) !== null) {
+        const rawEvent = buffer.slice(0, sep.index);
+        buffer = buffer.slice(sep.index + sep.length);
         yield parseSseEvent(rawEvent);
       }
     }
@@ -166,10 +203,10 @@ async function* iterateSse(body: ReadableStream<Uint8Array>): AsyncIterable<SseE
   }
 }
 
-function parseSseEvent(raw: string): SseEvent {
+export function parseSseEvent(raw: string): SseEvent {
   const out: SseEvent = { data: '' };
   const dataLines: string[] = [];
-  for (const line of raw.split('\n')) {
+  for (const line of raw.split(/\r?\n/)) {
     if (!line || line.startsWith(':')) continue;
     if (line.startsWith('event:')) {
       out.event = line.slice(6).trim();
@@ -183,10 +220,10 @@ function parseSseEvent(raw: string): SseEvent {
 
 interface ClaudeStreamEvent {
   type: string;
-  delta?: { type?: string; text?: string };
+  delta?: { type?: string; text?: string; stop_reason?: string };
   error?: { message?: string };
 }
 
 interface OpenAIStreamEvent {
-  choices?: Array<{ delta?: { content?: string } }>;
+  choices?: Array<{ delta?: { content?: string }; finish_reason?: string | null }>;
 }

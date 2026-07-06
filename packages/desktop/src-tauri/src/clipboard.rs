@@ -1,11 +1,15 @@
 use crate::error::{AppError, AppResult};
 
+const LOG: &str = "[desktop/clipboard]";
+const POLL_INTERVAL_MS: u64 = 20;
+const POLL_TIMEOUT_MS: u64 = 1000;
+
 pub fn read_selection() -> AppResult<String> {
     let mut clipboard = arboard::Clipboard::new()
         .map_err(|e| AppError::Clipboard(format!("init failed: {e}")))?;
     match clipboard.get_text() {
         Ok(text) => {
-            println!("[desktop/clipboard] Read {} chars", text.len());
+            println!("{LOG} Read {} chars", text.len());
             Ok(text)
         }
         Err(arboard::Error::ContentNotAvailable) => Ok(String::new()),
@@ -19,25 +23,106 @@ pub fn write_result(text: &str) -> AppResult<()> {
     clipboard
         .set_text(text.to_string())
         .map_err(|e| AppError::Clipboard(format!("write failed: {e}")))?;
-    println!("[desktop/clipboard] Wrote {} chars", text.len());
+    println!("{LOG} Wrote {} chars", text.len());
     Ok(())
 }
 
-pub fn clear() -> AppResult<()> {
+pub fn restore(text: &str) -> AppResult<()> {
     let mut clipboard = arboard::Clipboard::new()
         .map_err(|e| AppError::Clipboard(format!("init failed: {e}")))?;
     clipboard
-        .clear()
-        .map_err(|e| AppError::Clipboard(format!("clear failed: {e}")))?;
-    println!("[desktop/clipboard] Cleared");
+        .set_text(text.to_string())
+        .map_err(|e| AppError::Clipboard(format!("restore failed: {e}")))?;
+    println!("{LOG} Restored original clipboard ({} chars)", text.len());
     Ok(())
 }
 
-/// Simulate Cmd+C / Ctrl+C in the frontmost application via synthetic key events.
+/// Capture selected text from the frontmost application by simulating Cmd+C / Ctrl+C.
 ///
-/// On macOS this uses CGEventPost which requires **Accessibility** permission.
-/// Without it, events are silently dropped (no error returned).
-/// Check `accessibility::is_granted()` before calling.
+/// Uses the platform clipboard change counter to detect whether the copy succeeded,
+/// polling every ~20ms for up to ~1 second. Returns `None` if nothing was selected
+/// (counter never changed).
+pub fn grab_selection() -> Option<String> {
+    let counter_before = change_count();
+    simulate_copy();
+
+    let mut elapsed: u64 = 0;
+    loop {
+        std::thread::sleep(std::time::Duration::from_millis(POLL_INTERVAL_MS));
+        elapsed += POLL_INTERVAL_MS;
+
+        if change_count() != counter_before {
+            let text = read_selection().unwrap_or_default();
+            println!("{LOG} Copy detected after {elapsed}ms, got {} chars", text.len());
+            if text.trim().is_empty() {
+                return None;
+            }
+            return Some(text);
+        }
+
+        if elapsed >= POLL_TIMEOUT_MS {
+            println!("{LOG} Clipboard unchanged after {POLL_TIMEOUT_MS}ms — nothing selected");
+            return None;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Platform: clipboard change counter
+// ---------------------------------------------------------------------------
+
+#[cfg(target_os = "windows")]
+fn change_count() -> i64 {
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetClipboardSequenceNumber() -> u32;
+    }
+    // SAFETY: GetClipboardSequenceNumber is a well-defined Win32 API that
+    // requires no handle and returns the global clipboard sequence number.
+    unsafe { GetClipboardSequenceNumber() as i64 }
+}
+
+#[cfg(target_os = "macos")]
+fn change_count() -> i64 {
+    use std::ffi::c_void;
+
+    extern "C" {
+        fn objc_getClass(name: *const u8) -> *mut c_void;
+        fn sel_registerName(name: *const u8) -> *mut c_void;
+    }
+
+    // SAFETY: Objective-C runtime calls to get [NSPasteboard generalPasteboard].changeCount.
+    // objc_msgSend is cast to the concrete signature needed for each call — this is the
+    // standard pattern for Rust ObjC FFI without the objc crate.
+    unsafe {
+        let cls = objc_getClass(b"NSPasteboard\0".as_ptr());
+        let sel_gp = sel_registerName(b"generalPasteboard\0".as_ptr());
+        let sel_cc = sel_registerName(b"changeCount\0".as_ptr());
+
+        type SendPtr = unsafe extern "C" fn(*mut c_void, *mut c_void) -> *mut c_void;
+        type SendI64 = unsafe extern "C" fn(*mut c_void, *mut c_void) -> i64;
+
+        extern "C" {
+            fn objc_msgSend(obj: *mut c_void, sel: *mut c_void) -> *mut c_void;
+        }
+
+        let send_ptr: SendPtr = std::mem::transmute(objc_msgSend as *const ());
+        let send_i64: SendI64 = std::mem::transmute(objc_msgSend as *const ());
+
+        let pasteboard = send_ptr(cls, sel_gp);
+        send_i64(pasteboard, sel_cc)
+    }
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+fn change_count() -> i64 {
+    0
+}
+
+// ---------------------------------------------------------------------------
+// Platform: simulate Cmd+C / Ctrl+C
+// ---------------------------------------------------------------------------
+
 #[cfg(target_os = "windows")]
 pub fn simulate_copy() {
     const VK_SHIFT: u8 = 0x10;
@@ -52,9 +137,8 @@ pub fn simulate_copy() {
         fn keybd_event(bVk: u8, bScan: u8, dwFlags: u32, dwExtraInfo: usize);
     }
 
-    // SAFETY: keybd_event is a well-defined Windows API for synthetic key input
+    // SAFETY: keybd_event is a well-defined Windows API for synthetic key input.
     unsafe {
-        // Release modifier keys still held from the hotkey combo.
         keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
         keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
         keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);
@@ -70,7 +154,7 @@ pub fn simulate_copy() {
         keybd_event(VK_C, 0, KEYEVENTF_KEYUP, 0);
         keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
     }
-    println!("[desktop/clipboard] Simulated Ctrl+C");
+    println!("{LOG} Simulated Ctrl+C");
 }
 
 #[cfg(target_os = "macos")]
@@ -109,10 +193,10 @@ pub fn simulate_copy() {
             CFRelease(up as *const _);
         }
     }
-    println!("[desktop/clipboard] Simulated Cmd+C via CGEventPost");
+    println!("{LOG} Simulated Cmd+C via CGEventPost");
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn simulate_copy() {
-    println!("[desktop/clipboard] simulate_copy not supported on this platform");
+    println!("{LOG} simulate_copy not supported on this platform");
 }

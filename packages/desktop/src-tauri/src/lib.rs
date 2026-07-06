@@ -25,8 +25,8 @@ pub(crate) fn strip_code_fences(text: &str) -> String {
         None => return s.to_string(),
     };
     let trimmed = after_fence.trim_end();
-    if trimmed.ends_with("```") {
-        trimmed[..trimmed.len() - 3].trim().to_string()
+    if let Some(stripped) = trimmed.strip_suffix("```") {
+        stripped.trim().to_string()
     } else {
         after_fence.trim().to_string()
     }
@@ -92,6 +92,57 @@ fn open_accessibility_settings() {
     accessibility::open_settings();
 }
 
+#[cfg(test)]
+mod tests {
+    use super::strip_code_fences;
+
+    #[test]
+    fn no_fences_returns_trimmed() {
+        assert_eq!(strip_code_fences("hello world"), "hello world");
+        assert_eq!(strip_code_fences("  spaced  "), "spaced");
+    }
+
+    #[test]
+    fn strips_fences_with_language() {
+        let input = "```rust\nfn main() {}\n```";
+        assert_eq!(strip_code_fences(input), "fn main() {}");
+    }
+
+    #[test]
+    fn strips_fences_no_language() {
+        let input = "```\nhello\n```";
+        assert_eq!(strip_code_fences(input), "hello");
+    }
+
+    #[test]
+    fn unclosed_fence_returns_body() {
+        let input = "```python\nprint('hi')";
+        assert_eq!(strip_code_fences(input), "print('hi')");
+    }
+
+    #[test]
+    fn fence_only_no_newline() {
+        assert_eq!(strip_code_fences("```"), "```");
+    }
+
+    #[test]
+    fn empty_input() {
+        assert_eq!(strip_code_fences(""), "");
+    }
+
+    #[test]
+    fn multibyte_utf8_content() {
+        let input = "```\nпривіт світ 🌍\n```";
+        assert_eq!(strip_code_fences(input), "привіт світ 🌍");
+    }
+
+    #[test]
+    fn multiline_content() {
+        let input = "```js\nline1\nline2\nline3\n```";
+        assert_eq!(strip_code_fences(input), "line1\nline2\nline3");
+    }
+}
+
 fn bootstrap(app: &AppHandle) -> AppResult<()> {
     tray::build(app)?;
     let config = load_saved_config(app);
@@ -116,7 +167,7 @@ pub fn run() {
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
                     if event.state() == ShortcutState::Pressed {
-                        hotkey::dispatch_shortcut(app, &shortcut);
+                        hotkey::dispatch_shortcut(app, shortcut);
                     }
                 })
                 .build(),

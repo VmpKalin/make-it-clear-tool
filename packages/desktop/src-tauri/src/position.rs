@@ -6,6 +6,7 @@ const CURSOR_OFFSET_Y: i32 = -10;
 #[cfg(target_os = "windows")]
 fn cursor_position() -> Option<(i32, i32)> {
     #[repr(C)]
+    #[allow(clippy::upper_case_acronyms)]
     struct POINT { x: i32, y: i32 }
 
     extern "system" {
@@ -47,6 +48,7 @@ fn cursor_position() -> Option<(i32, i32)> {
     None
 }
 
+#[allow(clippy::too_many_arguments)]
 fn clamp_to_screen(
     x: i32,
     y: i32,
@@ -69,6 +71,70 @@ fn clamp_to_screen(
     let cy = y.clamp(min_y, max_y.max(min_y));
 
     (cx, cy)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::clamp_to_screen;
+
+    #[test]
+    fn within_bounds_unchanged() {
+        let (x, y) = clamp_to_screen(500, 400, 400, 200, 0, 0, 1920, 1080);
+        assert_eq!((x, y), (500, 400));
+    }
+
+    #[test]
+    fn clamps_to_left_margin() {
+        let (x, _) = clamp_to_screen(50, 400, 400, 200, 0, 0, 1920, 1080);
+        assert_eq!(x, 192); // 1920/10 = 192
+    }
+
+    #[test]
+    fn clamps_to_right_edge() {
+        let (x, _) = clamp_to_screen(1800, 400, 400, 200, 0, 0, 1920, 1080);
+        assert_eq!(x, 1920 - 192 - 400); // max_x = 1328
+    }
+
+    #[test]
+    fn clamps_to_top_margin() {
+        let (_, y) = clamp_to_screen(500, 50, 400, 200, 0, 0, 1920, 1080);
+        assert_eq!(y, 108); // 1080/10 = 108
+    }
+
+    #[test]
+    fn clamps_to_bottom_edge() {
+        let (_, y) = clamp_to_screen(500, 1000, 400, 200, 0, 0, 1920, 1080);
+        assert_eq!(y, 1080 - 108 - 200); // max_y = 772
+    }
+
+    #[test]
+    fn respects_monitor_offset() {
+        // x=2500 is comfortably inside the second monitor's safe area
+        let (x, y) = clamp_to_screen(2500, 500, 400, 200, 1920, 0, 1920, 1080);
+        assert_eq!((x, y), (2500, 500));
+    }
+
+    #[test]
+    fn small_monitor_window_larger_than_available() {
+        let (x, y) = clamp_to_screen(0, 0, 800, 600, 0, 0, 800, 600);
+        // margins: 80, 60. max_x = 800 - 80 - 800 = -80, clamped to min_x = 80
+        assert_eq!(x, 80);
+        assert_eq!(y, 60);
+    }
+
+    #[test]
+    fn zero_size_monitor() {
+        let (x, y) = clamp_to_screen(100, 100, 400, 200, 0, 0, 0, 0);
+        assert_eq!((x, y), (0, 0));
+    }
+
+    #[test]
+    fn negative_coordinates() {
+        // mon starts at -1920, margin=192, so min_x=-1728, max_x=-592
+        // x=-100 > max_x, gets clamped down; y=-100 < min_y=108, clamped up
+        let (x, y) = clamp_to_screen(-100, -100, 400, 200, -1920, 0, 1920, 1080);
+        assert_eq!((x, y), (-592, 108));
+    }
 }
 
 pub fn show_near_cursor(window: &WebviewWindow) {

@@ -5,12 +5,14 @@
   "description": "AI-powered text assistant — browser extension + desktop widget",
   "scripts": {
     "typecheck": "pnpm -r --parallel typecheck",
+    "test": "vitest run",
     "build:all": "pnpm -r build",
     "dev:extension": "pnpm --filter extension dev",
     "dev:desktop": "pnpm --filter desktop tauri dev"
   },
   "devDependencies": {
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.9"
   },
   "packageManager": "pnpm@9.12.0",
   "engines": {

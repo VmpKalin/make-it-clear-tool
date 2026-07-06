@@ -10,26 +10,9 @@ import { sendNotification } from '@tauri-apps/plugin-notification';
 import { Help } from './Help.js';
 import { Settings } from './Settings.js';
 import { loadConfig, loadWindowSize, saveConfig, saveWindowSize } from './storage.js';
+import { matchesHotkey, stripCodeFences, parseError, cornerOrigin } from './utils.js';
 
 const LOG = '[desktop/App]';
-
-/** Returns true if the keyboard event matches a hotkey string like "Ctrl+Shift+B". */
-function matchesHotkey(e: KeyboardEvent, hotkey: string): boolean {
-  if (!hotkey) return false;
-  const parts = hotkey.split('+').map((s) => s.trim().toLowerCase());
-  const ctrlNeeded = parts.includes('ctrl');
-  const shiftNeeded = parts.includes('shift');
-  const altNeeded = parts.includes('alt');
-  const metaNeeded = parts.includes('meta');
-  const mainKey = parts.find((p) => !['ctrl', 'shift', 'alt', 'meta'].includes(p));
-  if (!mainKey) return false;
-  if (e.ctrlKey !== ctrlNeeded || e.shiftKey !== shiftNeeded || e.altKey !== altNeeded || e.metaKey !== metaNeeded) return false;
-  let code = e.code;
-  if (code.startsWith('Key')) code = code.slice(3).toLowerCase();
-  else if (code.startsWith('Digit')) code = code.slice(5);
-  else code = code.toLowerCase();
-  return code === mainKey;
-}
 
 interface StreamChunk {
   request_id: string;
@@ -49,38 +32,6 @@ type HotkeyTriggerPayload = Record<string, never>;
 
 type AnimState = 'hidden' | 'appearing' | 'visible' | 'disappearing';
 
-function cornerOrigin(relX: number, relY: number, w: number, h: number): string {
-  const left = relX < w / 2;
-  const top = relY < h / 2;
-  return `${left ? 'left' : 'right'} ${top ? 'top' : 'bottom'}`;
-}
-
-function stripCodeFences(text: string): string {
-  let s = text.trim();
-  if (!s.startsWith('```')) return s;
-  const firstNl = s.indexOf('\n');
-  if (firstNl === -1) return s;
-  s = s.slice(firstNl + 1);
-  if (s.trimEnd().endsWith('```')) {
-    s = s.slice(0, s.lastIndexOf('```'));
-  }
-  return s.trim();
-}
-
-function parseError(raw: string): { message: string; authRelated: boolean } {
-  const lower = raw.toLowerCase();
-  if (lower.includes('401') || lower.includes('unauthorized') || lower.includes('invalid.*key'))
-    return { message: 'Invalid API key. Check your key in Settings.', authRelated: true };
-  if (lower.includes('429') || lower.includes('rate limit'))
-    return { message: 'Rate limit reached. Try again in a moment.', authRelated: false };
-  if (lower.includes('network') || lower.includes('fetch') || lower.includes('connect') || lower.includes('dns') || lower.includes('timeout'))
-    return { message: 'No connection. Check your internet.', authRelated: false };
-  if (lower.includes('403') || lower.includes('forbidden'))
-    return { message: 'Access denied. Check your API key permissions.', authRelated: true };
-  if (lower.includes('500') || lower.includes('internal server'))
-    return { message: 'Provider error. Try again in a moment.', authRelated: false };
-  return { message: 'Something went wrong. Try again.', authRelated: false };
-}
 
 export function App(): JSX.Element {
   const [view, setView] = useState<'main' | 'settings' | 'help'>('main');
@@ -144,15 +95,19 @@ export function App(): JSX.Element {
     setStatus('');
     setError(null);
     setCopied(false);
+    setBusy(false);
     requestIdRef.current = null;
     window.clearTimeout(errorTimerRef.current);
   }, []);
+
+  const hideTimerRef = useRef<number | undefined>(undefined);
 
   const hideWindow = useCallback((clear: boolean) => {
     if (hidingRef.current) return;
     hidingRef.current = true;
     setAnim('disappearing');
-    setTimeout(() => {
+    window.clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = window.setTimeout(() => {
       void getCurrentWindow().hide().catch((err: unknown) => {
         console.warn(`${LOG} Hide failed`, err);
       });
@@ -163,12 +118,18 @@ export function App(): JSX.Element {
 
   useEffect(() => {
     void loadConfig().then(setConfig);
-    void loadWindowSize().then(async (size) => {
-      if (size) {
-        await getCurrentWindow().setSize(new LogicalSize(size.width, size.height));
+    void (async () => {
+      try {
+        const size = await loadWindowSize();
+        if (size) {
+          await getCurrentWindow().setSize(new LogicalSize(size.width, size.height));
+        }
+      } catch (err) {
+        console.warn(`${LOG} Restore window size failed`, err);
+      } finally {
+        await invoke('frontend_ready');
       }
-      await invoke('frontend_ready');
-    });
+    })();
   }, []);
 
   useEffect(() => {
@@ -200,6 +161,7 @@ export function App(): JSX.Element {
 
   useEffect(() => {
     const unlisten = listen<[number, number]>('textpilot://window-will-appear', (event) => {
+      window.clearTimeout(hideTimerRef.current);
       hidingRef.current = false;
       const [relX, relY] = event.payload;
       const el = containerRef.current;
@@ -294,6 +256,8 @@ export function App(): JSX.Element {
 
   const runAction = useCallback(
     async (action: Action, textOverride?: string, configOverride?: AppConfig) => {
+      if (busy) return;
+
       const source = (textOverride ?? text).trim();
       const activeConfig = configOverride ?? config;
       if (!source) {
@@ -314,16 +278,18 @@ export function App(): JSX.Element {
       setStatus(`streaming · ${action}`);
       resizeToFit();
 
-      try {
-        const requestId = crypto.randomUUID();
-        requestIdRef.current = requestId;
+      const requestId = crypto.randomUUID();
+      requestIdRef.current = requestId;
 
+      try {
         const result = await invoke<string>('run_action', {
           requestId,
           text: source,
           action,
           config: activeConfig,
         });
+
+        if (requestIdRef.current !== requestId) return;
 
         if (activeConfig.autoCopyResult) {
           await writeText(stripCodeFences(result));
@@ -334,13 +300,14 @@ export function App(): JSX.Element {
           }
         }
       } catch (err) {
+        if (requestIdRef.current !== requestId) return;
         const message = err instanceof Error ? err.message : String(err);
         showError(message);
         setBusy(false);
         requestIdRef.current = null;
       }
     },
-    [text, config, switchView, resizeToFit],
+    [busy, text, config, switchView, resizeToFit, showError],
   );
 
   const handleGlobalTrigger = useCallback(() => {
@@ -392,6 +359,7 @@ export function App(): JSX.Element {
     setActiveAction(null);
     setStatus('');
     setCopied(false);
+    setBusy(false);
     requestIdRef.current = null;
     setTimeout(() => textareaRef.current?.focus(), 0);
   }, []);

@@ -6,8 +6,6 @@ use tauri_plugin_notification::NotificationExt;
 use crate::config::HotkeyMap;
 use crate::error::{AppError, AppResult};
 
-const GRAB_DELAY_MS: u64 = 300;
-
 #[derive(Clone, Serialize)]
 pub struct HotkeyTriggerPayload {}
 
@@ -38,20 +36,6 @@ pub fn register_hotkeys(app: &AppHandle, hotkeys: &HotkeyMap) -> AppResult<()> {
     }
 
     Ok(())
-}
-
-fn grab_selection() -> String {
-    // Clear clipboard so we can detect if Cmd+C actually delivered.
-    // Without this, stale clipboard content is mistaken for selected text.
-    let _ = crate::clipboard::clear();
-    std::thread::sleep(std::time::Duration::from_millis(50));
-
-    crate::clipboard::simulate_copy();
-    std::thread::sleep(std::time::Duration::from_millis(GRAB_DELAY_MS));
-
-    let text = crate::clipboard::read_selection().unwrap_or_default();
-    println!("[desktop/hotkey] Grabbed {} chars from clipboard", text.len());
-    text
 }
 
 pub fn dispatch_shortcut(app: &AppHandle, shortcut: &Shortcut) {
@@ -101,10 +85,14 @@ fn dispatch_quick_action(app: &AppHandle) {
 
     let app_handle = app.clone();
     std::thread::spawn(move || {
-        // Check Accessibility permission BEFORE attempting copy.
-        // CGEventPost silently drops events without it — no point trying.
         if !crate::accessibility::is_granted() {
             println!("[desktop/hotkey] Quick-action: Accessibility permission not granted");
+            let _ = app_handle
+                .notification()
+                .builder()
+                .title("TextPilot")
+                .body("Accessibility permission required. Open System Settings → Privacy & Security → Accessibility.")
+                .show();
             if let Some(window) = app_handle.get_webview_window("main") {
                 crate::position::show_near_cursor(&window);
             }
@@ -112,11 +100,22 @@ fn dispatch_quick_action(app: &AppHandle) {
             return;
         }
 
-        let text = grab_selection();
-        if text.trim().is_empty() {
-            println!("[desktop/hotkey] Quick-action: no text selected");
-            return;
-        }
+        let snapshot = crate::clipboard::read_selection().unwrap_or_default();
+
+        let text = match crate::clipboard::grab_selection() {
+            Some(t) => t,
+            None => {
+                println!("[desktop/hotkey] Quick-action: no text selected");
+                let _ = crate::clipboard::restore(&snapshot);
+                let _ = app_handle
+                    .notification()
+                    .builder()
+                    .title("TextPilot")
+                    .body("Select some text first.")
+                    .show();
+                return;
+            }
+        };
 
         let request_id = format!(
             "quick-{}",
@@ -144,6 +143,7 @@ fn dispatch_quick_action(app: &AppHandle) {
                     let cleaned = crate::strip_code_fences(&result);
                     if let Err(err) = crate::clipboard::write_result(&cleaned) {
                         eprintln!("[desktop/hotkey] Quick-action clipboard write failed: {err}");
+                        let _ = crate::clipboard::restore(&snapshot);
                         return;
                     }
                     let _ = app_handle
@@ -155,6 +155,13 @@ fn dispatch_quick_action(app: &AppHandle) {
                 }
                 Err(err) => {
                     eprintln!("[desktop/hotkey] Quick-action failed: {err}");
+                    let _ = crate::clipboard::restore(&snapshot);
+                    let _ = app_handle
+                        .notification()
+                        .builder()
+                        .title("TextPilot — Error")
+                        .body(err.to_string())
+                        .show();
                 }
             }
         });

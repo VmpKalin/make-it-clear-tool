@@ -16,4 +16,5 @@ export {
   getSystemPrompt,
 } from './prompts.js';
 
-export { runAction, CLAUDE_MODEL, OPENAI_MODEL, MAX_TOKENS } from './providers.js';
+export type { SseEvent } from './providers.js';
+export { runAction, parseSseEvent, CLAUDE_MODEL, OPENAI_MODEL, MAX_TOKENS } from './providers.js';

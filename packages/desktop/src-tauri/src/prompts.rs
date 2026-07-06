@@ -32,3 +32,52 @@ fn parse_section(slug: &str) -> Option<&'static str> {
     let section = PROMPTS_MD[body_start..body_end].trim();
     if section.is_empty() { None } else { Some(section) }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Action;
+
+    #[test]
+    fn all_actions_have_prompts() {
+        let actions = [
+            Action::Grammar,
+            Action::Rewrite,
+            Action::Shorten,
+            Action::Bullets,
+            Action::Translate,
+            Action::Format,
+        ];
+        for action in actions {
+            let prompt = system_prompt(action);
+            assert!(!prompt.is_empty(), "Empty prompt for {:?}", action);
+            assert_ne!(prompt, "You are a helpful assistant.", "Fallback hit for {:?}", action);
+        }
+    }
+
+    #[test]
+    fn grammar_prompt_mentions_grammar() {
+        let prompt = system_prompt(Action::Grammar);
+        let lower = prompt.to_lowercase();
+        assert!(lower.contains("grammar") || lower.contains("correct"));
+    }
+
+    #[test]
+    fn parse_section_missing_slug_returns_none() {
+        assert_eq!(parse_section("nonexistent_section_xyz"), None);
+    }
+
+    #[test]
+    fn parse_section_returns_nonempty_content() {
+        let section = parse_section("grammar");
+        assert!(section.is_some());
+        assert!(!section.unwrap().is_empty());
+    }
+
+    #[test]
+    fn sections_are_distinct() {
+        let grammar = parse_section("grammar").unwrap();
+        let rewrite = parse_section("rewrite").unwrap();
+        assert_ne!(grammar, rewrite);
+    }
+}

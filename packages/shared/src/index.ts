@@ -17,4 +17,4 @@ export {
 } from './prompts.js';
 
 export type { SseEvent } from './providers.js';
-export { runAction, parseSseEvent, CLAUDE_MODEL, OPENAI_MODEL, MAX_TOKENS } from './providers.js';
+export { runAction, parseSseEvent, buildUserPayload, CLAUDE_MODEL, OPENAI_MODEL, MAX_TOKENS } from './providers.js';

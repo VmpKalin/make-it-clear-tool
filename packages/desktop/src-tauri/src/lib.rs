@@ -65,7 +65,12 @@ async fn run_action(
         Ok(result) => {
             let cleaned = strip_code_fences(&result);
             if config.auto_copy_result {
-                if let Err(err) = clipboard::write_result(&cleaned) {
+                let text = cleaned.clone();
+                let write_result =
+                    tokio::task::spawn_blocking(move || clipboard::write_result(&text))
+                        .await
+                        .map_err(|e| format!("Clipboard task failed: {e}"))?;
+                if let Err(err) = write_result {
                     api::emit_error(&app, &request_id, &err.to_string());
                     return Err(err.to_string());
                 }
@@ -80,8 +85,11 @@ async fn run_action(
 }
 
 #[tauri::command]
-fn read_clipboard_selection() -> Result<String, String> {
-    clipboard::read_selection().map_err(|e| e.to_string())
+async fn read_clipboard_selection() -> Result<String, String> {
+    tokio::task::spawn_blocking(clipboard::read_selection)
+        .await
+        .map_err(|e| format!("Clipboard task failed: {e}"))?
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

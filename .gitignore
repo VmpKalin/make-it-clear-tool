@@ -37,6 +37,9 @@ secrets.json
 Thumbs.db
 desktop.ini
 
+# Claude Code local settings (personal permissions, model prefs)
+.claude/settings.local.json
+
 # Editors
 .vscode/
 .idea/

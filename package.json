@@ -7,8 +7,8 @@
     "typecheck": "pnpm -r --parallel typecheck",
     "test": "vitest run",
     "build:all": "pnpm -r build",
-    "dev:extension": "pnpm --filter extension dev",
-    "dev:desktop": "pnpm --filter desktop tauri dev"
+    "dev:extension": "pnpm --filter @textpilot/extension dev",
+    "dev:desktop": "pnpm --filter @textpilot/desktop tauri dev"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

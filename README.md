@@ -37,8 +37,9 @@ Alternatively: right-click the app in Finder → **Open** → **Open**.
 | Grammar   | Fix spelling, punctuation, and unclear sentences            |
 | Rewrite   | Improve clarity while keeping your voice                    |
 | Shorten   | Remove filler, keep the meaning                             |
-| Format    | Grammar + clean up spacing, indentation, line breaks        |
+| Bullets   | Convert text into concise bullet points                     |
 | Translate | English ↔ Ukrainian, auto-detected                         |
+| Format    | Grammar + clean up spacing, indentation, line breaks        |
 
 ---
 
@@ -59,7 +60,7 @@ TextPilot uses two separate global hotkeys (configurable in Settings):
 
 1. Press the Open Window hotkey (or click the tray icon)
 2. Paste or type text
-3. Click an action button (Grammar, Rewrite, Shorten, Format, Translate)
+3. Click an action button (Grammar, Rewrite, Shorten, Bullets, Translate, Format)
 4. Result streams in real-time
 5. Result is auto-copied to clipboard — just paste anywhere
 
@@ -134,15 +135,15 @@ pnpm install
 pnpm typecheck
 
 # desktop — Tauri dev window
-pnpm --filter desktop tauri dev
+pnpm --filter @textpilot/desktop tauri dev
 
 # extension — dev build with watch
-pnpm --filter extension dev
+pnpm --filter @textpilot/extension dev
 ```
 
 ### Load the extension in Chrome
 
-1. `pnpm --filter extension build`
+1. `pnpm --filter @textpilot/extension build`
 2. Visit `chrome://extensions` and enable Developer mode
 3. *Load unpacked* and select `packages/extension/dist/`
 
@@ -150,10 +151,10 @@ pnpm --filter extension dev
 
 ```bash
 # macOS (.dmg)
-pnpm --filter desktop tauri build
+pnpm --filter @textpilot/desktop tauri build
 
 # Windows (.msi + .exe)
-pnpm --filter desktop tauri build
+pnpm --filter @textpilot/desktop tauri build
 ```
 
 Rust sanity check:

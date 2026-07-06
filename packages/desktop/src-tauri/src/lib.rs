@@ -16,6 +16,22 @@ use tauri_plugin_store::StoreExt;
 use crate::config::{Action, AppConfig, HotkeyMap, Provider};
 use crate::error::AppResult;
 
+const MAX_INPUT_CHARS: usize = 20_000;
+
+fn validate_input(text: &str) -> Result<(), String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Input text is empty".to_string());
+    }
+    let count = trimmed.chars().count();
+    if count > MAX_INPUT_CHARS {
+        return Err(format!(
+            "Input text too long ({count} characters, max {MAX_INPUT_CHARS})"
+        ));
+    }
+    Ok(())
+}
+
 pub(crate) fn strip_code_fences(text: &str) -> String {
     let s = text.trim();
     if !s.starts_with("```") {
@@ -40,6 +56,7 @@ async fn run_action(
     text: String,
     action: Action,
 ) -> Result<String, String> {
+    validate_input(&text)?;
     let config = load_saved_config(&app);
     let api_key = keystore::get_api_key(config.provider)
         .ok_or_else(|| "API key is missing. Set it in Settings.".to_string())?;
@@ -113,7 +130,7 @@ fn open_accessibility_settings() {
 
 #[cfg(test)]
 mod tests {
-    use super::strip_code_fences;
+    use super::{strip_code_fences, validate_input, MAX_INPUT_CHARS};
 
     #[test]
     fn no_fences_returns_trimmed() {
@@ -159,6 +176,25 @@ mod tests {
     fn multiline_content() {
         let input = "```js\nline1\nline2\nline3\n```";
         assert_eq!(strip_code_fences(input), "line1\nline2\nline3");
+    }
+
+    #[test]
+    fn empty_input_rejected() {
+        assert!(validate_input("").is_err());
+        assert!(validate_input("   ").is_err());
+        assert!(validate_input("\n\t").is_err());
+    }
+
+    #[test]
+    fn oversized_input_rejected() {
+        let text: String = "a".repeat(MAX_INPUT_CHARS + 1);
+        assert!(validate_input(&text).is_err());
+    }
+
+    #[test]
+    fn valid_input_accepted() {
+        assert!(validate_input("hello world").is_ok());
+        assert!(validate_input(&"a".repeat(MAX_INPUT_CHARS)).is_ok());
     }
 }
 

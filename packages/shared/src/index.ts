@@ -12,7 +12,6 @@ export type { SystemPrompts } from './prompts.js';
 export {
   FALLBACK_SYSTEM_PROMPTS,
   parsePromptsMarkdown,
-  loadPromptsFromDisk,
   loadPromptsFromUrl,
   getSystemPrompt,
 } from './prompts.js';

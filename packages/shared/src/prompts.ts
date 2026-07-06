@@ -57,27 +57,6 @@ export function parsePromptsMarkdown(markdown: string): SystemPrompts {
   return result as SystemPrompts;
 }
 
-interface NodeFsPromises {
-  readFile(path: string, encoding: 'utf8'): Promise<string>;
-}
-
-const dynamicImport = new Function('spec', 'return import(spec)') as (
-  spec: string,
-) => Promise<unknown>;
-
-export async function loadPromptsFromDisk(filePath: string): Promise<SystemPrompts> {
-  try {
-    const mod = (await dynamicImport('node:fs/promises')) as NodeFsPromises;
-    const raw = await mod.readFile(filePath, 'utf8');
-    const prompts = parsePromptsMarkdown(raw);
-    console.log(`${LOG} Loaded prompts from ${filePath}`);
-    return prompts;
-  } catch (cause) {
-    console.error(`${LOG} Failed to load prompts from ${filePath}`, cause);
-    throw new Error(`${LOG} Could not load prompts.md from ${filePath}`);
-  }
-}
-
 export async function loadPromptsFromUrl(url: string): Promise<SystemPrompts> {
   try {
     const res = await fetch(url);

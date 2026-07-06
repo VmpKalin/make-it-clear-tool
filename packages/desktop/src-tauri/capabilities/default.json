@@ -16,6 +16,8 @@
     "core:event:default",
     "store:default",
     "clipboard-manager:allow-write-text",
-    "log:default"
+    "log:default",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

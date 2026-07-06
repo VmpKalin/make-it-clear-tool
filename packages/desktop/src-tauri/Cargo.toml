@@ -29,6 +29,8 @@ futures-util = "0.3"
 arboard = "3"
 keyring = { version = "3", features = [] }
 tauri-plugin-log = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 log = "0.4"
 
 [features]

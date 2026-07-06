@@ -10,6 +10,8 @@ permissions:
 
 env:
   CARGO_INCREMENTAL: 0
+  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
 jobs:
   build-mac:
@@ -28,6 +30,8 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Cache Rust
         uses: actions/cache@v4
@@ -36,22 +40,24 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             packages/desktop/src-tauri/target
-          key: macos-cargo-${{ hashFiles('packages/desktop/src-tauri/Cargo.lock') }}
-          restore-keys: macos-cargo-
+          key: macos-universal-cargo-${{ hashFiles('packages/desktop/src-tauri/Cargo.lock') }}
+          restore-keys: macos-universal-cargo-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build desktop (Tauri)
+      - name: Build desktop (Tauri — universal)
         working-directory: packages/desktop
-        run: pnpm tauri build
+        run: pnpm tauri build --target universal-apple-darwin
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-artifacts
           path: |
-            packages/desktop/src-tauri/target/release/bundle/dmg/*.dmg
+            packages/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            packages/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz
+            packages/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz.sig
           if-no-files-found: error
 
   build-windows:
@@ -90,10 +96,6 @@ jobs:
         working-directory: packages/desktop
         run: pnpm tauri build
 
-      - name: List bundle output
-        shell: bash
-        run: ls -R packages/desktop/src-tauri/target/release/bundle/
-
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -101,12 +103,16 @@ jobs:
           path: |
             packages/desktop/src-tauri/target/release/bundle/msi/*.msi
             packages/desktop/src-tauri/target/release/bundle/nsis/*.exe
+            packages/desktop/src-tauri/target/release/bundle/nsis/*.nsis.zip
+            packages/desktop/src-tauri/target/release/bundle/nsis/*.nsis.zip.sig
           if-no-files-found: error
 
   release:
     needs: [build-mac, build-windows]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
@@ -122,6 +128,54 @@ jobs:
       - name: List downloaded artifacts
         run: find artifacts/ -type f
 
+      - name: Read version from tauri.conf.json
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' packages/desktop/src-tauri/tauri.conf.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate latest.json for updater
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          BASE_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+
+          # macOS universal (.app.tar.gz)
+          MAC_FILE=$(find artifacts/macos -name '*.app.tar.gz' ! -name '*.sig' | head -1)
+          MAC_SIG_FILE="${MAC_FILE}.sig"
+          MAC_SIG=$(cat "$MAC_SIG_FILE")
+          MAC_FILENAME=$(basename "$MAC_FILE")
+
+          # Windows NSIS (.nsis.zip)
+          WIN_FILE=$(find artifacts/windows -name '*.nsis.zip' ! -name '*.sig' | head -1)
+          WIN_SIG_FILE="${WIN_FILE}.sig"
+          WIN_SIG=$(cat "$WIN_SIG_FILE")
+          WIN_FILENAME=$(basename "$WIN_FILE")
+
+          cat > artifacts/latest.json << ENDJSON
+          {
+            "version": "${TAG}",
+            "notes": "See https://github.com/${{ github.repository }}/releases/tag/${TAG}",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "darwin-aarch64": {
+                "signature": "${MAC_SIG}",
+                "url": "${BASE_URL}/${MAC_FILENAME}"
+              },
+              "darwin-x86_64": {
+                "signature": "${MAC_SIG}",
+                "url": "${BASE_URL}/${MAC_FILENAME}"
+              },
+              "windows-x86_64": {
+                "signature": "${WIN_SIG}",
+                "url": "${BASE_URL}/${WIN_FILENAME}"
+              }
+            }
+          }
+          ENDJSON
+
+          echo "Generated latest.json:"
+          cat artifacts/latest.json
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -133,7 +187,7 @@ jobs:
 
             **Windows** — download `.exe` (NSIS installer) or `.msi` and run.
 
-            **macOS** — download `.dmg`, open it, drag TextPilot to Applications.
+            **macOS** — download `.dmg` (universal — Intel + Apple Silicon), open it, drag TextPilot to Applications.
 
             > **macOS note:** The app is not notarized with Apple. On first launch macOS may block it.
             > To fix, run this once in Terminal:
@@ -141,9 +195,15 @@ jobs:
             > xattr -cr /Applications/TextPilot.app
             > ```
             > Or: right-click the app → Open → Open.
+
+            Existing installs with auto-update enabled will update automatically.
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.msi
             artifacts/**/*.exe
+            artifacts/**/*.tar.gz
+            artifacts/**/*.nsis.zip
+            artifacts/**/*.sig
+            artifacts/latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

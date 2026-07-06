@@ -3,6 +3,8 @@ import type { Action, AppConfig, Provider } from '@textpilot/shared';
 import { ACTIONS, ACTION_LABELS, DEFAULT_CONFIG } from '@textpilot/shared';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { check } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
 import { HotkeyRecorder } from './HotkeyRecorder.js';
 import { loadConfig, saveConfig } from './storage.js';
 
@@ -17,6 +19,7 @@ export function Settings({ onClose }: Props): JSX.Element {
   const [status, setStatus] = useState('');
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [keyStored, setKeyStored] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState('');
 
   useEffect(() => {
     void loadConfig().then(setConfig);
@@ -48,6 +51,26 @@ export function Settings({ onClose }: Props): JSX.Element {
       console.error(`${LOG} Hide failed`, err);
     }
   }, []);
+
+  const handleCheckUpdate = async (): Promise<void> => {
+    setUpdateStatus('checking...');
+    try {
+      const update = await check();
+      if (update) {
+        setUpdateStatus(`v${update.version} available — installing...`);
+        await update.downloadAndInstall();
+        setUpdateStatus('Installed — restarting...');
+        await relaunch();
+      } else {
+        setUpdateStatus('Up to date');
+        setTimeout(() => setUpdateStatus(''), 3000);
+      }
+    } catch (err) {
+      console.error(`${LOG} Update check failed`, err);
+      setUpdateStatus('Check failed');
+      setTimeout(() => setUpdateStatus(''), 3000);
+    }
+  };
 
   const handleSave = async (): Promise<void> => {
     setStatus('saving...');
@@ -211,6 +234,13 @@ export function Settings({ onClose }: Props): JSX.Element {
             Close
           </button>
           <span className="save-status">{status}</span>
+        </div>
+
+        <div className="settings-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+          <button type="button" className="ghost-btn" onClick={() => void handleCheckUpdate()}>
+            Check for updates
+          </button>
+          <span className="save-status">{updateStatus}</span>
         </div>
       </div>
     </div>

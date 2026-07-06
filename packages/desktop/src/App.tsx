@@ -176,6 +176,10 @@ export function App(): JSX.Element {
   const hasResultRef = useRef(false);
   hasResultRef.current = output.length > 0 || busy;
   textRef.current = text;
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const configRef = useRef(config);
+  configRef.current = config;
 
   useEffect(() => {
     let hideTimeout: number | undefined;
@@ -306,9 +310,9 @@ export function App(): JSX.Element {
     };
   }, [handleGlobalTrigger]);
 
-  // Local per-action keyboard shortcuts — only fire while the app window is focused.
   useEffect(() => {
     const handleActionHotkeys = (e: KeyboardEvent): void => {
+      if (viewRef.current !== 'main') return;
       if (!config?.hotkeys) return;
       for (const action of ACTIONS) {
         const hotkey = config.hotkeys[action];
@@ -355,6 +359,16 @@ export function App(): JSX.Element {
         hideWindow(true);
         return;
       }
+      if (viewRef.current !== 'main') return;
+
+      const currentConfig = configRef.current;
+      if (currentConfig?.hotkeys) {
+        for (const action of ACTIONS) {
+          const hotkey = currentConfig.hotkeys[action];
+          if (hotkey && matchesHotkey(e, hotkey)) return;
+        }
+      }
+
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key === 'z' && !hasResultRef.current && !textRef.current && lastInputRef.current) {
         e.preventDefault();

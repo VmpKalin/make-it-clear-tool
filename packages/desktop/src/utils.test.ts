@@ -1,5 +1,65 @@
 import { describe, it, expect } from 'vitest';
-import { matchesHotkey, stripCodeFences, parseError, cornerOrigin } from './utils.js';
+import type { HotkeyMap } from '@textpilot/shared';
+import { matchesHotkey, stripCodeFences, parseError, cornerOrigin, findHotkeyConflict } from './utils.js';
+
+const DEFAULT_HOTKEYS: HotkeyMap = {
+  trigger: 'Ctrl+Alt+B',
+  quickAction: undefined,
+  grammar: undefined,
+  rewrite: undefined,
+  shorten: undefined,
+  bullets: undefined,
+  translate: undefined,
+  format: undefined,
+};
+
+describe('findHotkeyConflict', () => {
+  it('detects conflict with built-in Ctrl+E', () => {
+    expect(findHotkeyConflict('Ctrl+E', 'grammar', DEFAULT_HOTKEYS)).toBe('built-in shortcut');
+  });
+
+  it('detects conflict with built-in Ctrl+N', () => {
+    expect(findHotkeyConflict('Ctrl+N', 'grammar', DEFAULT_HOTKEYS)).toBe('built-in shortcut');
+  });
+
+  it('detects conflict with built-in Ctrl+Z', () => {
+    expect(findHotkeyConflict('Ctrl+Z', 'grammar', DEFAULT_HOTKEYS)).toBe('built-in shortcut');
+  });
+
+  it('detects conflict with Meta+E on macOS', () => {
+    expect(findHotkeyConflict('Meta+E', 'grammar', DEFAULT_HOTKEYS)).toBe('built-in shortcut');
+  });
+
+  it('detects conflict with trigger hotkey', () => {
+    expect(findHotkeyConflict('Ctrl+Alt+B', 'grammar', DEFAULT_HOTKEYS)).toBe('Open Window');
+  });
+
+  it('does not conflict with self', () => {
+    expect(findHotkeyConflict('Ctrl+Alt+B', 'trigger', DEFAULT_HOTKEYS)).toBeNull();
+  });
+
+  it('detects conflict with quickAction', () => {
+    const hotkeys: HotkeyMap = { ...DEFAULT_HOTKEYS, quickAction: 'Ctrl+Shift+X' };
+    expect(findHotkeyConflict('Ctrl+Shift+X', 'grammar', hotkeys)).toBe('Quick Action');
+  });
+
+  it('detects conflict with another action', () => {
+    const hotkeys: HotkeyMap = { ...DEFAULT_HOTKEYS, rewrite: 'Ctrl+Shift+R' };
+    expect(findHotkeyConflict('Ctrl+Shift+R', 'grammar', hotkeys)).toBe('Rewrite');
+  });
+
+  it('allows unique hotkeys', () => {
+    expect(findHotkeyConflict('Ctrl+Shift+G', 'grammar', DEFAULT_HOTKEYS)).toBeNull();
+  });
+
+  it('is case-insensitive', () => {
+    expect(findHotkeyConflict('ctrl+alt+b', 'grammar', DEFAULT_HOTKEYS)).toBe('Open Window');
+  });
+
+  it('returns null for empty candidate', () => {
+    expect(findHotkeyConflict('', 'grammar', DEFAULT_HOTKEYS)).toBeNull();
+  });
+});
 
 describe('matchesHotkey', () => {
   const makeEvent = (code: string, mods: { ctrl?: boolean; shift?: boolean; alt?: boolean; meta?: boolean } = {}) => ({

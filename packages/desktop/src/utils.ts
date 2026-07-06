@@ -1,3 +1,35 @@
+import type { HotkeyMap } from '@textpilot/shared';
+import { ACTIONS, ACTION_LABELS } from '@textpilot/shared';
+
+const BUILT_IN_HOTKEYS = ['ctrl+e', 'ctrl+n', 'ctrl+z', 'meta+e', 'meta+n', 'meta+z'];
+
+export function findHotkeyConflict(candidate: string, slot: string, hotkeys: HotkeyMap): string | null {
+  const norm = candidate.trim().toLowerCase();
+  if (!norm) return null;
+
+  if (BUILT_IN_HOTKEYS.includes(norm)) {
+    return 'built-in shortcut';
+  }
+
+  if (slot !== 'trigger' && hotkeys.trigger && hotkeys.trigger.trim().toLowerCase() === norm) {
+    return 'Open Window';
+  }
+
+  if (slot !== 'quickAction' && hotkeys.quickAction && hotkeys.quickAction.trim().toLowerCase() === norm) {
+    return 'Quick Action';
+  }
+
+  for (const action of ACTIONS) {
+    if (slot === action) continue;
+    const val = hotkeys[action];
+    if (val && val.trim().toLowerCase() === norm) {
+      return ACTION_LABELS[action];
+    }
+  }
+
+  return null;
+}
+
 export function matchesHotkey(e: Pick<KeyboardEvent, 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey' | 'code'>, hotkey: string): boolean {
   if (!hotkey) return false;
   const parts = hotkey.split('+').map((s) => s.trim().toLowerCase());

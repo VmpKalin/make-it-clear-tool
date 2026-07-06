@@ -7,6 +7,7 @@ import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { HotkeyRecorder } from './HotkeyRecorder.js';
 import { loadConfig, saveConfig } from './storage.js';
+import { findHotkeyConflict } from './utils.js';
 
 const LOG = '[desktop/Settings]';
 
@@ -20,6 +21,7 @@ export function Settings({ onClose }: Props): JSX.Element {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [keyStored, setKeyStored] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('');
+  const [hotkeyConflict, setHotkeyConflict] = useState('');
 
   useEffect(() => {
     void loadConfig().then(setConfig);
@@ -33,7 +35,20 @@ export function Settings({ onClose }: Props): JSX.Element {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
+  const showConflict = (msg: string): void => {
+    setHotkeyConflict(msg);
+    setTimeout(() => setHotkeyConflict(''), 3000);
+  };
+
   const updateActionHotkey = (action: Action, value: string | undefined): void => {
+    if (value) {
+      const conflict = findHotkeyConflict(value, action, config.hotkeys);
+      if (conflict) {
+        showConflict(`${value} is already used by ${conflict}`);
+        return;
+      }
+    }
+    setHotkeyConflict('');
     setConfig((prev) => ({
       ...prev,
       hotkeys: {
@@ -161,7 +176,12 @@ export function Settings({ onClose }: Props): JSX.Element {
           <span className="field-label">Open Window</span>
           <HotkeyRecorder
             value={config.hotkeys.trigger}
-            onChange={(trigger) => update('hotkeys', { ...config.hotkeys, trigger })}
+            onChange={(trigger) => {
+              const conflict = findHotkeyConflict(trigger, 'trigger', config.hotkeys);
+              if (conflict) { showConflict(`${trigger} is already used by ${conflict}`); return; }
+              setHotkeyConflict('');
+              update('hotkeys', { ...config.hotkeys, trigger });
+            }}
           />
         </div>
 
@@ -169,7 +189,14 @@ export function Settings({ onClose }: Props): JSX.Element {
           <span className="field-label">Quick Action</span>
           <HotkeyRecorder
             value={config.hotkeys.quickAction ?? ''}
-            onChange={(quickAction) => update('hotkeys', { ...config.hotkeys, quickAction: quickAction || undefined })}
+            onChange={(quickAction) => {
+              if (quickAction) {
+                const conflict = findHotkeyConflict(quickAction, 'quickAction', config.hotkeys);
+                if (conflict) { showConflict(`${quickAction} is already used by ${conflict}`); return; }
+              }
+              setHotkeyConflict('');
+              update('hotkeys', { ...config.hotkeys, quickAction: quickAction || undefined });
+            }}
           />
           <span className="field-sub-label">Grabs selected text, runs default action, copies result to clipboard</span>
         </div>
@@ -197,6 +224,9 @@ export function Settings({ onClose }: Props): JSX.Element {
               </div>
             ))}
           </div>
+          {hotkeyConflict && (
+            <span className="field-sub-label" style={{ color: 'var(--error, #e55)' }}>{hotkeyConflict}</span>
+          )}
         </div>
 
         <label className="field-checkbox">
